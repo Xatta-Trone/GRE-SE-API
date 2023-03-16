@@ -52,8 +52,8 @@ func main() {
 
 	var wg sync.WaitGroup
 	// populate google result
-	wg.Add(1)
-	//go GetGoogleResult(&wg)
+	wg.Add(2)
+	go GetGoogleResult(&wg)
 	go GetWikiResult(&wg)
 	// go GetWordsResult(&wg)
 
@@ -73,17 +73,20 @@ type WordGetStruct struct {
 func GetGoogleResult(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	fmt.Println("Inside the google scrapper")
+	// fmt.Println("Inside the google scrapper")
+	c := color.New(color.FgCyan).Add(color.Underline)
+	c.Println("Inside the google scrapper")
 
 	words := []WordGetStruct{}
 	gdb.Select(&words, "SELECT id, word from wordlist where is_google_parsed=0 and google_try < 6")
 
 	for _, word := range words {
 
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 		fmt.Printf("Getting %v - %s from google \n", word.ID, word.Word)
 
-		res, err := http.Get(fmt.Sprintf("http://localhost:8080/word/%s", word.Word))
+		// res, err := http.Get(fmt.Sprintf("https://dict.gre-sentence-equivalence.com/word/%s", word.Word))
+		res, err := http.Get(fmt.Sprintf("https://localhost:8080/word/%s", word.Word))
 
 		if err != nil {
 			fmt.Println(err)
@@ -104,7 +107,10 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 				fmt.Println(err)
 			}
 
-			fmt.Printf("Inserted %v - %s from google \n", word.ID, word.Word)
+			// fmt.Printf("Inserted %v - %s from google \n", word.ID, word.Word)
+
+			s := color.New(color.FgGreen).Add(color.Underline)
+			s.Printf("Inserted %v - %s from google \n", word.ID, word.Word)
 		}
 
 		if res.StatusCode == http.StatusNotFound {
@@ -202,7 +208,7 @@ func GetWordsResult(wg *sync.WaitGroup) {
 	fmt.Println("Inside the words api scrapper")
 
 	words := []WordGetStruct{}
-	gdb.Select(&words, "SELECT id, word from wordlist where is_words_api_parsed=0 and words_api_parsed < 6")
+	gdb.Select(&words, "SELECT id, word from wordlist where is_words_api_parsed=0 and words_api_try < 6")
 
 	totalParseInDay := 2000
 
@@ -249,7 +255,7 @@ func GetWordsResult(wg *sync.WaitGroup) {
 				fmt.Println(err)
 			}
 
-		}else {
+		} else {
 			continue
 		}
 
