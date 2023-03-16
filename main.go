@@ -52,8 +52,8 @@ func main() {
 
 	var wg sync.WaitGroup
 	// populate google result
-	wg.Add(2)
-	go GetGoogleResult(&wg)
+	wg.Add(1)
+	// go GetGoogleResult(&wg)
 	go GetWikiResult(&wg)
 	// go GetWordsResult(&wg)
 
@@ -86,7 +86,8 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 		fmt.Printf("Getting %v - %s from google \n", word.ID, word.Word)
 
 		// res, err := http.Get(fmt.Sprintf("https://dict.gre-sentence-equivalence.com/word/%s", word.Word))
-		res, err := http.Get(fmt.Sprintf("https://localhost:8080/word/%s", word.Word))
+		res, err := http.Get(fmt.Sprintf("https://dictionary-api-v7nc.onrender.com/word/%s", word.Word))
+		// res, err := http.Get(fmt.Sprintf("https://localhost:8080/word/%s", word.Word))
 
 		if err != nil {
 			fmt.Println(err)
