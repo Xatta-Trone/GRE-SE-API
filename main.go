@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/imroc/req/v3"
 	"github.com/jmoiron/sqlx"
@@ -52,7 +53,7 @@ func main() {
 	var wg sync.WaitGroup
 	// populate google result
 	wg.Add(1)
-	// go GetGoogleResult(&wg)
+	//go GetGoogleResult(&wg)
 	go GetWikiResult(&wg)
 	// go GetWordsResult(&wg)
 
@@ -71,30 +72,24 @@ type WordGetStruct struct {
 
 func GetGoogleResult(wg *sync.WaitGroup) {
 	defer wg.Done()
+
 	fmt.Println("Inside the google scrapper")
 
-	ttl := time.Millisecond * 100
-	wait := false
-
 	words := []WordGetStruct{}
-	gdb.Select(&words, "SELECT id, word from wordlist where is_google_parsed=0")
+	gdb.Select(&words, "SELECT id, word from wordlist where is_google_parsed=0 and google_try < 6")
 
 	for _, word := range words {
 
-		if wait {
-			time.Sleep(ttl)
-			ttl = ttl * 2
-			wait = false
-			continue
-		}
-
 		time.Sleep(200 * time.Millisecond)
+		fmt.Printf("Getting %v - %s from google \n", word.ID, word.Word)
 
 		res, err := http.Get(fmt.Sprintf("http://localhost:8080/word/%s", word.Word))
 
 		if err != nil {
 			fmt.Println(err)
 		}
+
+		defer res.Body.Close()
 
 		// fmt.Println(string(body))
 
@@ -111,11 +106,19 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 
 			fmt.Printf("Inserted %v - %s from google \n", word.ID, word.Word)
 		}
+
+		if res.StatusCode == http.StatusNotFound {
+			_, err := gdb.Exec("Update wordlist set google_try= google_try+1 where id = ? ", word.ID)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		}
+
 		if res.StatusCode == http.StatusTooManyRequests {
-			time.Sleep(ttl)
-			ttl = ttl * 2
-			wait = true
-			continue
+			// wg.Done()
+			break
 		}
 
 	}
@@ -127,20 +130,25 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 
 func GetWikiResult(wg *sync.WaitGroup) {
 	defer wg.Done()
-	fmt.Println("Inside the wiki scrapper")
+	c := color.New(color.FgCyan).Add(color.Underline)
+	c.Println("Inside the wiki scrapper")
 
-	ttl := time.Millisecond * 100
+	// ttl := time.Millisecond * 100
 
 	words := []WordGetStruct{}
-	gdb.Select(&words, "SELECT id, word from wordlist where is_wiki_parsed=0")
+	gdb.Select(&words, "SELECT id, word from wordlist where is_wiki_parsed=0 and wiki_try < 6")
 
 	for _, word := range words {
+		time.Sleep(200 * time.Millisecond)
+		fmt.Printf("Getting %v - %s from wiki \n", word.ID, word.Word)
 
 		res, err := http.Get(fmt.Sprintf("https://api.dictionaryapi.dev/api/v2/entries/en_US/%s", word.Word))
 
 		if err != nil {
 			fmt.Println(err)
 		}
+
+		defer res.Body.Close()
 
 		// fmt.Println(string(body))
 
@@ -155,14 +163,34 @@ func GetWikiResult(wg *sync.WaitGroup) {
 				fmt.Println(err)
 			}
 
-			fmt.Printf("Inserted %v - %s from wiki \n", word.ID, word.Word)
+			s := color.New(color.FgGreen).Add(color.Underline)
+			s.Printf("Inserted %v - %s from wiki \n", word.ID, word.Word)
+
+			// fmt.Printf("Inserted %v - %s from wiki \n", word.ID, word.Word)
 
 		}
-		if res.StatusCode == http.StatusTooManyRequests {
-			time.Sleep(ttl)
-			ttl = ttl * 2
-			continue
+
+		if res.StatusCode == http.StatusNotFound {
+			_, err := gdb.Exec("Update wordlist set wiki_try= wiki_try+1 where id = ? ", word.ID)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
 		}
+
+		if res.StatusCode == http.StatusTooManyRequests {
+			// wg.Done()
+			color.Red("Too many attempts :: wiki")
+			break
+		}
+
+		// continue
+		// if res.StatusCode == http.StatusTooManyRequests {
+		// 	time.Sleep(ttl)
+		// 	ttl = ttl * 2
+		// 	continue
+		// }
 
 	}
 	fmt.Println("Done the wiki scrapper")
@@ -174,7 +202,7 @@ func GetWordsResult(wg *sync.WaitGroup) {
 	fmt.Println("Inside the words api scrapper")
 
 	words := []WordGetStruct{}
-	gdb.Select(&words, "SELECT id, word from wordlist where is_words_api_parsed=0")
+	gdb.Select(&words, "SELECT id, word from wordlist where is_words_api_parsed=0 and words_api_parsed < 6")
 
 	totalParseInDay := 2000
 
@@ -183,6 +211,7 @@ func GetWordsResult(wg *sync.WaitGroup) {
 		if totalParseInDay == 0 {
 			break
 		}
+		fmt.Printf("Getting %v - %s from words api \n", word.ID, word.Word)
 
 		client := req.C().SetCommonHeaders(map[string]string{
 			"x-rapidapi-key":  os.Getenv("WORDS_API"),
@@ -190,10 +219,13 @@ func GetWordsResult(wg *sync.WaitGroup) {
 		}) // Use C() to create a client.
 		res, err := client.R(). // Use R() to create a request.
 					Get(fmt.Sprintf("https://wordsapiv1.p.rapidapi.com/words/%s", word.Word))
+
 		totalParseInDay--
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		defer res.Body.Close()
 
 		// check status code
 
@@ -208,7 +240,16 @@ func GetWordsResult(wg *sync.WaitGroup) {
 
 			fmt.Printf("Inserted %v - %s from words api \n", word.ID, word.Word)
 
-		} else {
+		}
+
+		if res.StatusCode == http.StatusNotFound {
+			_, err := gdb.Exec("Update wordlist set words_api_try= words_api_try+1 where id = ? ", word.ID)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		}else {
 			continue
 		}
 
