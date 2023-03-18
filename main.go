@@ -48,14 +48,16 @@ func main() {
 	fmt.Println("Connected to db!")
 
 	// populate the words
-	// readRemoteFile()
+	readRemoteFile()
 
 	var wg sync.WaitGroup
 	// populate google result
 	wg.Add(1)
 	// go GetGoogleResult(&wg)
 	go GetWikiResult(&wg)
+	// go GetThesaurusResult(&wg)
 	// go GetWordsResult(&wg)
+	// go GetNinjaResult(&wg)
 
 	wg.Wait()
 
@@ -73,21 +75,19 @@ type WordGetStruct struct {
 func GetGoogleResult(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	// fmt.Println("Inside the google scrapper")
-	c := color.New(color.FgCyan).Add(color.Underline)
-	c.Println("Inside the google scrapper")
+	printS("Inside the google scrapper")
 
 	words := []WordGetStruct{}
 	gdb.Select(&words, "SELECT id, word from wordlist where is_google_parsed=0 and google_try < 6")
 
 	for _, word := range words {
 
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(800 * time.Millisecond)
 		fmt.Printf("Getting %v - %s from google \n", word.ID, word.Word)
 
 		// res, err := http.Get(fmt.Sprintf("https://dict.gre-sentence-equivalence.com/word/%s", word.Word))
 		res, err := http.Get(fmt.Sprintf("https://dictionary-api-v7nc.onrender.com/word/%s", word.Word))
-		// res, err := http.Get(fmt.Sprintf("https://localhost:8080/word/%s", word.Word))
+		// res, err := http.Get(fmt.Sprintf("http://localhost:8080/word/%s", word.Word))
 
 		if err != nil {
 			fmt.Println(err)
@@ -109,9 +109,8 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 			}
 
 			// fmt.Printf("Inserted %v - %s from google \n", word.ID, word.Word)
-
-			s := color.New(color.FgGreen).Add(color.Underline)
-			s.Printf("Inserted %v - %s from google \n", word.ID, word.Word)
+			str := fmt.Sprintf("Inserted %v - %s from google \n", word.ID, word.Word)
+			printG(str)
 		}
 
 		if res.StatusCode == http.StatusNotFound {
@@ -137,8 +136,8 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 
 func GetWikiResult(wg *sync.WaitGroup) {
 	defer wg.Done()
-	c := color.New(color.FgCyan).Add(color.Underline)
-	c.Println("Inside the wiki scrapper")
+
+	printS("Inside the wiki scrapper")
 
 	// ttl := time.Millisecond * 100
 
@@ -146,7 +145,7 @@ func GetWikiResult(wg *sync.WaitGroup) {
 	gdb.Select(&words, "SELECT id, word from wordlist where is_wiki_parsed=0 and wiki_try < 6")
 
 	for _, word := range words {
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 		fmt.Printf("Getting %v - %s from wiki \n", word.ID, word.Word)
 
 		res, err := http.Get(fmt.Sprintf("https://api.dictionaryapi.dev/api/v2/entries/en_US/%s", word.Word))
@@ -170,8 +169,8 @@ func GetWikiResult(wg *sync.WaitGroup) {
 				fmt.Println(err)
 			}
 
-			s := color.New(color.FgGreen).Add(color.Underline)
-			s.Printf("Inserted %v - %s from wiki \n", word.ID, word.Word)
+			str := fmt.Sprintf("Inserted %v - %s from wiki \n", word.ID, word.Word)
+			printG(str)
 
 			// fmt.Printf("Inserted %v - %s from wiki \n", word.ID, word.Word)
 
@@ -206,12 +205,13 @@ func GetWikiResult(wg *sync.WaitGroup) {
 
 func GetWordsResult(wg *sync.WaitGroup) {
 	defer wg.Done()
-	fmt.Println("Inside the words api scrapper")
+
+	printS("Inside the words api scrapper")
 
 	words := []WordGetStruct{}
 	gdb.Select(&words, "SELECT id, word from wordlist where is_words_api_parsed=0 and words_api_try < 6")
 
-	totalParseInDay := 2000
+	totalParseInDay := 600
 
 	for _, word := range words {
 
@@ -245,7 +245,8 @@ func GetWordsResult(wg *sync.WaitGroup) {
 				continue
 			}
 
-			fmt.Printf("Inserted %v - %s from words api \n", word.ID, word.Word)
+			str := fmt.Sprintf("Inserted %v - %s from words api \n", word.ID, word.Word)
+			printG(str)
 
 		}
 
@@ -265,14 +266,137 @@ func GetWordsResult(wg *sync.WaitGroup) {
 
 }
 
+func GetThesaurusResult(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	printS("Inside the thesaurus scrapper")
+
+	words := []WordGetStruct{}
+	gdb.Select(&words, "SELECT id, word from wordlist where is_parsed_th=0 and th_try < 6")
+
+	for _, word := range words {
+
+		time.Sleep(300 * time.Millisecond)
+		fmt.Printf("Getting %v - %s from thesaurus \n", word.ID, word.Word)
+
+		res, err := http.Get(fmt.Sprintf("http://localhost:8081/w/%s", word.Word))
+
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		defer res.Body.Close()
+
+		// fmt.Println(string(body))
+
+		// check status code
+
+		if res.StatusCode == http.StatusOK {
+			// insert into the db
+			body, _ := ioutil.ReadAll(res.Body)
+			_, err := gdb.Exec("Update wordlist set thesaurus=?,is_parsed_th=1 where id = ? ", string(body), word.ID)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			printG(fmt.Sprintf("Inserted %v - %s from thesaurus \n", word.ID, word.Word))
+		}
+
+		if res.StatusCode == http.StatusNotFound {
+			_, err := gdb.Exec("Update wordlist set th_try= th_try+1 where id = ? ", word.ID)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		}
+
+		if res.StatusCode == http.StatusTooManyRequests {
+			// wg.Done()
+			break
+		}
+
+	}
+
+	// fmt.Println(words)
+	fmt.Println("Done the thesaurus scrapper")
+
+}
+
+func GetNinjaResult(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+
+	printS("Inside the ninja scrapper")
+
+	words := []WordGetStruct{}
+	gdb.Select(&words, "SELECT id, word from wordlist where is_parsed_ninja=0 and ninja_try < 6")
+
+	totalParseInDay := 10000
+
+	for _, word := range words {
+
+		if totalParseInDay == 0 {
+			break
+		}
+		fmt.Printf("Getting %v - %s from ninja api \n", word.ID, word.Word)
+
+		client := req.C().SetCommonHeaders(map[string]string{
+			"X-Api-Key": os.Getenv("NINJA_API"),
+		}) // Use C() to create a client.
+		res, err := client.R(). // Use R() to create a request.
+					Get(fmt.Sprintf("https://api.api-ninjas.com/v1/thesaurus?word=%s", word.Word))
+
+		totalParseInDay--
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		defer res.Body.Close()
+
+		// check status code
+
+		if res.StatusCode == http.StatusOK {
+			// insert into the db
+			_, err := gdb.Exec("Update wordlist set ninja=?,is_parsed_ninja=1 where id = ? ", res.String(), word.ID)
+
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			printG(fmt.Sprintf("Inserted %v - %s from ninja \n", word.ID, word.Word))
+
+		}
+
+		if res.StatusCode == http.StatusNotFound {
+			_, err := gdb.Exec("Update wordlist set ninja_try= ninja_try+1 where id = ? ", word.ID)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		}
+
+		if res.StatusCode == http.StatusTooManyRequests {
+			// wg.Done()
+			break
+		}
+
+	}
+	fmt.Println("Done the ninja api scrapper")
+
+}
+
 func readRemoteFile() {
 
 	// truncate the table first
-	_, err := gdb.Exec("TRUNCATE TABLE wordlist")
+	// _, err := gdb.Exec("TRUNCATE TABLE wordlist")
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	res, err := http.Get("https://raw.githubusercontent.com/Xatta-Trone/gre-words-collection/main/word-list/combined.csv")
 
@@ -310,4 +434,18 @@ func readRemoteFile() {
 
 	fmt.Println("Total rows inserted", totalRows)
 
+}
+
+func printS(str string) {
+	c := color.New(color.FgCyan).Add(color.Underline)
+	c.Println(str)
+}
+
+func printG(str string) {
+	c := color.New(color.FgGreen).Add(color.Underline)
+	c.Println(str)
+}
+
+func printR(str string) {
+	color.Red(str)
 }
