@@ -52,11 +52,11 @@ func main() {
 
 	var wg sync.WaitGroup
 	// populate google result
-	wg.Add(1)
-	// go GetGoogleResult(&wg)
-	go GetWikiResult(&wg)
+	wg.Add(2)
+	go GetGoogleResult(&wg)
+	// go GetWikiResult(&wg)
 	// go GetThesaurusResult(&wg)
-	// go GetWordsResult(&wg)
+	go GetWordsResult(&wg)
 	// go GetNinjaResult(&wg)
 
 	wg.Wait()
@@ -86,8 +86,8 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 		fmt.Printf("Getting %v - %s from google \n", word.ID, word.Word)
 
 		// res, err := http.Get(fmt.Sprintf("https://dict.gre-sentence-equivalence.com/word/%s", word.Word))
-		res, err := http.Get(fmt.Sprintf("https://dictionary-api-v7nc.onrender.com/word/%s", word.Word))
-		// res, err := http.Get(fmt.Sprintf("http://localhost:8080/word/%s", word.Word))
+		// res, err := http.Get(fmt.Sprintf("https://dictionary-api-v7nc.onrender.com/word/%s", word.Word))
+		res, err := http.Get(fmt.Sprintf("http://localhost:8080/word/%s", word.Word))
 
 		if err != nil {
 			fmt.Println(err)
@@ -186,9 +186,10 @@ func GetWikiResult(wg *sync.WaitGroup) {
 		}
 
 		if res.StatusCode == http.StatusTooManyRequests {
+			time.Sleep(5 * time.Minute)
 			// wg.Done()
 			color.Red("Too many attempts :: wiki")
-			break
+			continue
 		}
 
 		// continue
