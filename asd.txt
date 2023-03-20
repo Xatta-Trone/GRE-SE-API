@@ -1,40 +1,91 @@
 {
-    "word": "abase",
-    "audio": "//ssl.gstatic.com/dictionary/static/sounds/20220808/abase--_gb_1.mp3",
-    "phonetic": "/əˈbeɪs/",
+    "word": "aggregate",
+    "audio": "//ssl.gstatic.com/dictionary/static/sounds/20220808/aggregate--_gb_2.mp3",
+    "phonetic": "/ˈaɡrɪɡət/",
     "parts_of_speeches": [
         {
-            "audio": "",
-            "phonetic": "",
+            "audio": "//ssl.gstatic.com/dictionary/static/sounds/20220808/aggregate--_gb_2.mp3",
+            "phonetic": "/ˈaɡrɪɡət/",
             "definitions": [
                 {
-                    "example": "I watched my colleagues abasing themselves before the board of trustees",
+                    "example": "the council was an aggregate of three regional assemblies",
+                    "antonyms": null,
+                    "synonyms": null,
+                    "definition": "a whole formed by combining several separate elements."
+                },
+                {
+                    "example": "the specimen is an aggregate of rock and mineral fragments",
                     "antonyms": null,
                     "synonyms": [
-                        "humble",
-                        "humiliate",
-                        "belittle",
-                        "demean",
-                        "lower",
-                        "degrade",
-                        "disgrace",
-                        "disparage",
-                        "debase",
-                        "cheapen",
-                        "discredit",
-                        "mortify",
-                        "demote",
-                        "reduce",
-                        "grovel",
-                        "kowtow",
-                        "bow and scrape",
-                        "toady",
-                        "fawn",
-                        "crawl",
-                        "suck up to someone",
-                        "lick someone's boots"
+                        "collection",
+                        "mass",
+                        "cluster",
+                        "lump",
+                        "clump",
+                        "pile",
+                        "heap",
+                        "bundle",
+                        "quantity",
+                        "accumulation",
+                        "build-up",
+                        "agglomeration",
+                        "concentration",
+                        "assemblage",
+                        "mixture",
+                        "mix",
+                        "combination",
+                        "blend",
+                        "compound",
+                        "alloy",
+                        "amalgam",
+                        "conjunction",
+                        "synthesis",
+                        "marriage",
+                        "miscellany",
+                        "jumble",
+                        "hotchpotch",
+                        "mixed bag"
                     ],
-                    "definition": "behave in a way that belittles or degrades (someone)."
+                    "definition": "a material or structure formed from a mass of fragments or particles loosely compacted together."
+                }
+            ],
+            "parts_of_speech": "noun"
+        },
+        {
+            "audio": "//ssl.gstatic.com/dictionary/static/sounds/20220808/aggregate--_gb_2.mp3",
+            "phonetic": "/ˈaɡrɪɡət/",
+            "definitions": [
+                {
+                    "example": "the aggregate amount of grants made",
+                    "antonyms": null,
+                    "synonyms": [
+                        "total",
+                        "combined",
+                        "whole",
+                        "gross",
+                        "accumulated",
+                        "added",
+                        "entire",
+                        "complete",
+                        "full",
+                        "comprehensive",
+                        "overall",
+                        "composite"
+                    ],
+                    "definition": "formed or calculated by the combination of several separate elements; total."
+                }
+            ],
+            "parts_of_speech": "adjective"
+        },
+        {
+            "audio": "//ssl.gstatic.com/dictionary/static/sounds/20220808/aggregate--_gb_3.mp3",
+            "phonetic": "/ˈaɡrɪɡeɪt/",
+            "definitions": [
+                {
+                    "example": "socio-occupational groups aggregate men sharing similar kinds of occupation",
+                    "antonyms": null,
+                    "synonyms": null,
+                    "definition": "form or group into a class or cluster."
                 }
             ],
             "parts_of_speech": "verb"

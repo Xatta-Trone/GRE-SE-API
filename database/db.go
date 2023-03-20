@@ -11,23 +11,23 @@ import (
 
 var Gdb *sqlx.DB
 
-func InitializeDB(){
+func InitializeDB() *sqlx.DB {
 
 	db, err := sqlx.Connect("mysql", fmt.Sprintf("%s:%s@tcp(127.0.0.1:%s)/%s", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME")))
 
-	Gdb = db
+	// Gdb = db
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	defer db.Close()
+	// defer db.Close()
 
 	pingErr := db.Ping()
 
 	if pingErr != nil {
 		log.Fatal(pingErr)
 	}
-
 	fmt.Println("Connected to db!")
+	return db
 
 }

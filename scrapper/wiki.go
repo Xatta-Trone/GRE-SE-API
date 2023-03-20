@@ -1,6 +1,7 @@
 package scrapper
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -21,10 +22,16 @@ func GetWikiResult(wg *sync.WaitGroup) {
 	// ttl := time.Millisecond * 100
 
 	words := []model.WordGetStruct{}
-	database.Gdb.Select(&words, "SELECT id, word from wordlist where is_wiki_parsed=0 and wiki_try < 6")
+	err := database.Gdb.Select(&words, "SELECT id, word from wordlist where is_wiki_parsed=0 and wiki_try < 6")
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(len(words))
 
 	for _, word := range words {
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(400 * time.Millisecond)
 		fmt.Printf("Getting %v - %s from wiki \n", word.ID, word.Word)
 
 		res, err := http.Get(fmt.Sprintf("https://api.dictionaryapi.dev/api/v2/entries/en_US/%s", word.Word))
@@ -42,7 +49,13 @@ func GetWikiResult(wg *sync.WaitGroup) {
 		if res.StatusCode == http.StatusOK {
 			// insert into the db
 			body, _ := ioutil.ReadAll(res.Body)
-			_, err := database.Gdb.Exec("Update wordlist set wiki=?,is_wiki_parsed=1 where id = ? ", string(body), word.ID)
+
+			var result []model.Wiki
+			json.Unmarshal(body, &result)
+
+			data,_ := json.Marshal(result[0])
+
+			_, err := database.Gdb.Exec("Update wordlist set wiki=?,is_wiki_parsed=1 where id = ? ", string(data), word.ID)
 
 			if err != nil {
 				fmt.Println(err)
@@ -65,9 +78,10 @@ func GetWikiResult(wg *sync.WaitGroup) {
 		}
 
 		if res.StatusCode == http.StatusTooManyRequests {
+			color.Red("Too many attempts :: wiki")
 			time.Sleep(5 * time.Minute)
 			// wg.Done()
-			color.Red("Too many attempts :: wiki")
+			
 			continue
 		}
 

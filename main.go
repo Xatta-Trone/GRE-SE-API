@@ -18,7 +18,9 @@ func main() {
 
 	}
 
-	database.InitializeDB()
+	database.Gdb = database.InitializeDB()
+
+	defer database.Gdb.Close()
 
 	// GetChatGpt()
 
@@ -26,20 +28,23 @@ func main() {
 	// readRemoteFile()
 
 	// var wg sync.WaitGroup
-	// // populate google result
-	// wg.Add(2)
-	// go GetGoogleResult(&wg)
-	// // go GetWikiResult(&wg)
-	// // go GetThesaurusResult(&wg)
-	// go GetWordsResult(&wg)
-	// // go GetNinjaResult(&wg)
+	// // // populate google result
+	// wg.Add(1)
+	// // go scrapper.GetGoogleResult(&wg)
+	// go scrapper.GetWikiResult(&wg)
+	//  // go scrapper.GetThesaurusResult(&wg)
+	// // go scrapper.GetWordsResult(&wg)
+	// // // go scrapper.GetNinjaResult(&wg)
 
 	// wg.Wait()
 
 	// ReadAndImportNamedCsv("Barrons-333.csv", "Barron's 333")
 
-	processor.ReadTableAndProcessWord("abase")
+	processor.ReadTableAndProcessWord("aggregate")
 
+	
+
+	//
 	fmt.Println("All done")
 	elapsed := time.Since(start)
 	log.Printf("Total time took %s", elapsed)
