@@ -1,0 +1,43 @@
+{
+    "word": "abase",
+    "audio": "//ssl.gstatic.com/dictionary/static/sounds/20220808/abase--_gb_1.mp3",
+    "phonetic": "/əˈbeɪs/",
+    "parts_of_speeches": [
+        {
+            "audio": "",
+            "phonetic": "",
+            "definitions": [
+                {
+                    "example": "I watched my colleagues abasing themselves before the board of trustees",
+                    "antonyms": null,
+                    "synonyms": [
+                        "humble",
+                        "humiliate",
+                        "belittle",
+                        "demean",
+                        "lower",
+                        "degrade",
+                        "disgrace",
+                        "disparage",
+                        "debase",
+                        "cheapen",
+                        "discredit",
+                        "mortify",
+                        "demote",
+                        "reduce",
+                        "grovel",
+                        "kowtow",
+                        "bow and scrape",
+                        "toady",
+                        "fawn",
+                        "crawl",
+                        "suck up to someone",
+                        "lick someone's boots"
+                    ],
+                    "definition": "behave in a way that belittles or degrades (someone)."
+                }
+            ],
+            "parts_of_speech": "verb"
+        }
+    ]
+}
