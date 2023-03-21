@@ -9,15 +9,24 @@ import (
 	"os"
 
 	"github.com/xatta-trone/words-combinator/database"
+	"github.com/xatta-trone/words-combinator/processor"
 	"github.com/xatta-trone/words-combinator/utils"
 )
+
+// for named exec
+type WordStruct struct {
+	Word string
+}
+
+// const insertQuery = "Insert ignore into words(word,created_at) values(?,now()); "
+const insertQuery = "INSERT INTO words(word,created_at) SELECT :word, now() WHERE NOT EXISTS (SELECT word FROM words WHERE word = :word); "
 
 func ReadAndImportNamedCsv(fileName, groupName string) {
 
 	fmt.Printf("Reading %s file with the name %s \n", fileName, groupName)
 
 	// create the group name
-	result, err := database.Gdb.Exec("Insert into word_groups(name) values(?)", groupName)
+	result, err := database.Gdb.Exec("Insert into word_groups(name,created_at) values(?,now())", groupName)
 
 	if err != nil {
 		log.Fatal(err)
@@ -53,8 +62,9 @@ func ReadAndImportNamedCsv(fileName, groupName string) {
 
 		if len(processedWord) > 1 {
 			for _, w := range processedWord {
+				w := WordStruct{Word: w}
 
-				res, err := database.Gdb.Exec("Insert IGNORE into words(word) values(?)", w)
+				res, err := database.Gdb.NamedExec(insertQuery, w)
 
 				if err != nil {
 					log.Fatal(err)
@@ -75,12 +85,14 @@ func ReadAndImportNamedCsv(fileName, groupName string) {
 				// now insert into group relation
 
 				insertGroupRelation(id, groupId)
+				processNewWord(w.Word)
 
 			}
 
 		} else {
+			w := WordStruct{Word: processedWord[0]}
 
-			res, err := database.Gdb.Exec("Insert IGNORE into words(word) values(?)", processedWord[0])
+			res, err := database.Gdb.NamedExec(insertQuery, w)
 
 			if err != nil {
 				log.Fatal(err)
@@ -100,6 +112,7 @@ func ReadAndImportNamedCsv(fileName, groupName string) {
 			// now insert into group relation
 
 			insertGroupRelation(id, groupId)
+			processNewWord(w.Word)
 
 		}
 
@@ -122,7 +135,7 @@ func ReadAndImportNamedCsv(fileName, groupName string) {
 
 func insertGroupRelation(wordId, groupId int64) {
 	if wordId != 0 {
-		_, err := database.Gdb.Exec("Insert into word_group_relation(word_id,word_group_id) values(?,?)", wordId, groupId)
+		_, err := database.Gdb.Exec("Insert into word_group_relation(word_id,word_group_id,created_at) values(?,?,now())", wordId, groupId)
 
 		if err != nil {
 			log.Fatal("grp", err)
@@ -134,6 +147,11 @@ func insertGroupRelation(wordId, groupId int64) {
 		fmt.Println("===duplicate found===")
 	}
 
+}
+
+func processNewWord(word string) {
+	// now process the word
+	processor.ReadTableAndProcessWord(word)
 }
 
 func readRemoteFile() {

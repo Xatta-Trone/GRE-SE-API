@@ -7,7 +7,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/xatta-trone/words-combinator/database"
-	"github.com/xatta-trone/words-combinator/processor"
+	imp "github.com/xatta-trone/words-combinator/importer"
 )
 
 func main() {
@@ -38,11 +38,9 @@ func main() {
 
 	// wg.Wait()
 
-	// ReadAndImportNamedCsv("Barrons-333.csv", "Barron's 333")
+	imp.ReadAndImportNamedCsv("Barrons-333.csv", "Barron's 333")
 
-	processor.ReadTableAndProcessWord("aggregate")
-
-	
+	// processor.ReadTableAndProcessWord("abase")
 
 	//
 	fmt.Println("All done")

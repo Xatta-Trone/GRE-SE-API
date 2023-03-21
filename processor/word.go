@@ -33,6 +33,13 @@ func ReadTableAndProcessWord(word string) {
 	fmt.Println(r.Word)
 	fmt.Println(r.Google.MainWord == "")
 
+	if r.Google.MainWord == "" {
+		// this data needs to reviewed manually
+
+		UpdateDBNeedsAttention(r.Word)
+		return
+	}
+
 	// total parts of speeches
 	fmt.Println("total parts of speeches", len(r.Google.PartsOfSpeeches))
 
@@ -218,9 +225,9 @@ func ReadTableAndProcessWord(word string) {
 
 	}
 
-	data, _ := json.MarshalIndent(finalResult, "", "\t")
+	// data, _ := json.MarshalIndent(finalResult, "", "\t")
 
-	fmt.Println(string(data))
+	// fmt.Println(string(data))
 
 	finalData := model.CombinedWithWord{
 		Word:            word,
@@ -229,7 +236,9 @@ func ReadTableAndProcessWord(word string) {
 	finalData.Word = word
 	finalData.PartsOfSpeeches = finalResult
 
-	fmt.Println(finalData)
+	// fmt.Println(finalData)
+
+	SaveToDB(finalData)
 
 }
 
@@ -287,5 +296,55 @@ func getPosIndex(results []model.Combined, pos string) int {
 	}
 
 	return -1
+
+}
+
+func SaveToDB(wordData model.CombinedWithWord) {
+	tx, err := database.Gdb.Begin()
+	if err != nil {
+		fmt.Println(err)
+	}
+	// insert the word into the words table
+	data, err := json.Marshal(wordData)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = tx.Exec("Update words set word_data=? where word=?", string(data), wordData.Word)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	// update the wordlist table
+	_, err = tx.Exec("Update wordlist set is_all_parsed=1 where word=?", wordData.Word)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = tx.Commit()
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+}
+
+func UpdateDBNeedsAttention(word string) {
+	tx, err := database.Gdb.Begin()
+	if err != nil {
+		fmt.Println(err)
+	}
+	// update the wordlist table
+	_, err = tx.Exec("Update wordlist set needs_attention=1 where word=?", word)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = tx.Commit()
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 }
