@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"runtime"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/xatta-trone/words-combinator/database"
 	imp "github.com/xatta-trone/words-combinator/importer"
@@ -21,6 +24,26 @@ func main() {
 	database.Gdb = database.InitializeDB()
 
 	defer database.Gdb.Close()
+
+	// http
+
+	r := gin.Default()
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
+	})
+
+	PORT := os.Getenv("PORT")
+	URL := ""
+
+	if runtime.GOOS == "windows" {
+		URL = "localhost:" + PORT
+	} else {
+		URL = ":" + PORT
+	}
+
+	r.Run(URL) // listen and serve on 0.0.0.0:8080
 
 	// GetChatGpt()
 
