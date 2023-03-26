@@ -17,8 +17,7 @@ type WordModel struct {
 
 // repository
 type WordRepository interface {
-	// FindByID(ID int) (*WordModel, error)
-	// Save(user *WordModel) error
 	FindAll(req requests.WordIndexReqStruct) ([]WordModel, error)
 	FindOne(id int) (WordModel, error)
+	DeleteOne(id int) (bool, error)
 }

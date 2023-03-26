@@ -69,7 +69,6 @@ func (ctl *WordController) WordById(c *gin.Context) {
 		return
 	}
 
-
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
@@ -78,5 +77,34 @@ func (ctl *WordController) WordById(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"data": word,
 	})
+
+}
+
+func (ctl *WordController) DeleteById(c *gin.Context) {
+
+	// validate the given id
+	id := c.Param("id")
+
+	idx, err := strconv.Atoi(id)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "The given id is not valid integer"})
+		return
+	}
+
+	// get the data
+	ok, err := ctl.wordRepository.DeleteOne(idx)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, gin.H{"deleted": true})
 
 }

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -69,5 +70,36 @@ func (rep *WordRepository) FindOne(id int) (model.WordModel, error) {
 	}
 
 	return word, nil
+
+}
+
+func (rep *WordRepository) DeleteOne(id int) (bool, error) {
+
+	query := fmt.Sprintf("Delete FROM words where id=%d", id)
+
+	res, err := rep.Db.Exec(query)
+
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+	
+	return true, nil
 
 }

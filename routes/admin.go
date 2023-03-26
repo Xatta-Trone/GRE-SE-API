@@ -28,6 +28,7 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 
 	auth.GET("words", wordController.WordIndex)
 	auth.GET("words/:id", wordController.WordById)
+	auth.DELETE("words/:id", wordController.DeleteById)
 
 	return r
 
