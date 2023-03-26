@@ -27,6 +27,7 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	auth := admin.Use(middlewares.AuthMiddleware())
 
 	auth.GET("words", wordController.WordIndex)
+	auth.POST("words", wordController.WordSave)
 	auth.GET("words/:id", wordController.WordById)
 	auth.DELETE("words/:id", wordController.DeleteById)
 	auth.PUT("words/:id", wordController.UpdateById)

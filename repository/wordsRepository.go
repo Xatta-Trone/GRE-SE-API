@@ -13,6 +13,7 @@ import (
 // repository
 type WordRepositoryInterface interface {
 	FindAll(req requests.WordIndexReqStruct) ([]model.WordModel, error)
+	Create(word string, wordData model.WordDataModel, isReviewed int) (model.WordModel, error)
 	FindOne(id int) (model.WordModel, error)
 	DeleteOne(id int) (bool, error)
 	UpdateById(id int, data model.WordDataModel, isReviewed int) (bool, error)
@@ -149,5 +150,48 @@ func (rep *WordRepository) UpdateById(id int, wordData model.WordDataModel, isRe
 	}
 
 	return true, nil
+
+}
+
+func (rep *WordRepository) Create(word string, wordData model.WordDataModel, isReviewed int) (model.WordModel, error) {
+
+	newRecord := model.WordModel{}
+
+	// marshal the data for inserting
+	data, err := json.Marshal(wordData)
+
+	if err != nil {
+		fmt.Println(err)
+		return newRecord, err
+	}
+
+	queryMap := map[string]interface{}{"word": word, "word_data": string(data), "is_reviewed": isReviewed}
+
+	res, err := rep.Db.NamedExec("Insert into words(word,word_data,is_reviewed,created_at,updated_at) values(:word,:word_data,:is_reviewed,now(),now())", queryMap)
+
+	if err != nil {
+		fmt.Println(err)
+		return newRecord, err
+	}
+
+	lastId, err := res.LastInsertId()
+
+	if err != nil {
+		fmt.Println(err)
+		return newRecord, err
+	}
+
+	if lastId == 0 {
+		return newRecord, fmt.Errorf("there was a problem with the insertion. last id: %d", lastId)
+	}
+
+	newRecord, err = rep.FindOne(int(lastId))
+
+	if err != nil {
+		fmt.Println(err)
+		return newRecord, err
+	}
+
+	return newRecord, nil
 
 }

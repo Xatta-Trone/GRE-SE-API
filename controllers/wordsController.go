@@ -27,6 +27,7 @@ func (ctl *WordController) WordIndex(c *gin.Context) {
 
 	// validation request
 	req, errs := requests.WordsIndexRequest(c)
+	
 
 	fmt.Println(req)
 
@@ -46,6 +47,37 @@ func (ctl *WordController) WordIndex(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"data": word,
 		"meta": req,
+	})
+
+}
+
+func (ctl *WordController) WordSave(c *gin.Context) {
+
+	// validation request
+	req, errs := requests.WordCreateRequest(c)
+
+	fmt.Println(req)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs.All()})
+		return
+	}
+
+	wordData := model.WordDataModel{
+		Word:            req.Word,
+		PartsOfSpeeches: req.WordData,
+	}
+
+	// get the data
+	word, err := ctl.wordRepository.Create(req.Word, wordData, req.IsReviewed)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data": word,
 	})
 
 }
