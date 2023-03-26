@@ -3,11 +3,16 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/controllers"
+	"github.com/xatta-trone/words-combinator/database"
 	"github.com/xatta-trone/words-combinator/middlewares"
+	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/services"
 )
 
 func AdminRoutes(r *gin.Engine) *gin.Engine {
+	// init services
+	wordRepo := repository.NewWordRepository(database.Gdb)
+	wordController := controllers.NewWordController(wordRepo)
 
 	admin := r.Group("/admin")
 
@@ -21,7 +26,7 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 
 	auth := admin.Use(middlewares.AuthMiddleware())
 
-	auth.GET("words", controllers.WordIndex)
+	auth.GET("words", wordController.WordIndex)
 
 	return r
 

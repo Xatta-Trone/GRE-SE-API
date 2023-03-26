@@ -13,7 +13,7 @@ var Gdb *sqlx.DB
 
 func InitializeDB() *sqlx.DB {
 
-	db, err := sqlx.Connect("mysql", fmt.Sprintf("%s:%s@tcp(127.0.0.1:%s)/%s", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME")))
+	db, err := sqlx.Connect("mysql", fmt.Sprintf("%s:%s@tcp(127.0.0.1:%s)/%s?parseTime=true", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME")))
 
 	// Gdb = db
 	if err != nil {

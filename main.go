@@ -12,7 +12,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/xatta-trone/words-combinator/database"
 	"github.com/xatta-trone/words-combinator/routes"
-	"github.com/xatta-trone/words-combinator/services"
 )
 
 func init() {
@@ -35,16 +34,14 @@ func main() {
 
 	defer database.Gdb.Close()
 
-
-	// init services 
-	services.NewWordService(database.Gdb)
+	// init services
+	// services.NewWordService(database.Gdb)
 
 	// http
 	gin.ForceConsoleColor()
 	r := gin.Default()
 
 	routes.Init(r)
-
 
 	PORT := os.Getenv("PORT")
 	URL := ""

@@ -14,12 +14,12 @@ type Combined struct {
 	SynonymsN     []string `json:"synonyms_normal"`
 }
 
-type CombinedWithWord struct {
+type WordDataModel struct {
 	Word            string     `json:"word"`
 	PartsOfSpeeches []Combined `json:"partsOfSpeeches"`
 }
 
-func (ws *CombinedWithWord) Scan(val interface{}) error {
+func (ws *WordDataModel) Scan(val interface{}) error {
 	switch v := val.(type) {
 	case []byte:
 		json.Unmarshal(v, &ws)
@@ -33,6 +33,6 @@ func (ws *CombinedWithWord) Scan(val interface{}) error {
 		return fmt.Errorf("unsupported type: %T", v)
 	}
 }
-func (ws *CombinedWithWord) Value() (driver.Value, error) {
+func (ws *WordDataModel) Value() (driver.Value, error) {
 	return json.Marshal(ws)
 }

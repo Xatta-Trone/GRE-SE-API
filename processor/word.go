@@ -229,7 +229,7 @@ func ReadTableAndProcessWord(word string) {
 
 	// fmt.Println(string(data))
 
-	finalData := model.CombinedWithWord{
+	finalData := model.WordDataModel{
 		Word:            word,
 		PartsOfSpeeches: finalResult,
 	}
@@ -299,7 +299,7 @@ func getPosIndex(results []model.Combined, pos string) int {
 
 }
 
-func SaveToDB(wordData model.CombinedWithWord) {
+func SaveToDB(wordData model.WordDataModel) {
 	tx, err := database.Gdb.Begin()
 	if err != nil {
 		fmt.Println(err)
