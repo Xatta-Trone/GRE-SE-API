@@ -30,7 +30,7 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	auth.GET("words/:id", wordController.WordById)
 	auth.DELETE("words/:id", wordController.DeleteById)
 	auth.PUT("words/:id", wordController.UpdateById)
-	// auth.PATCH("words/:id", wordController.UpdateById)
+	auth.PATCH("words/:id", wordController.UpdateById)
 
 	return r
 
