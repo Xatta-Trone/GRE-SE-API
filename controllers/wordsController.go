@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/model"
@@ -43,6 +45,38 @@ func (ctl *WordController) WordIndex(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"data": word,
 		"meta": req,
+	})
+
+}
+
+func (ctl *WordController) WordById(c *gin.Context) {
+
+	// validate the given id
+	id := c.Param("id")
+
+	idx, err := strconv.Atoi(id)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "The given id is not valid integer"})
+		return
+	}
+
+	// get the data
+	word, err := ctl.wordRepository.FindOne(idx)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"data": word,
 	})
 
 }

@@ -46,3 +46,28 @@ func (rep *WordRepository) FindAll(r requests.WordIndexReqStruct) ([]model.WordM
 	return words, nil
 
 }
+
+func (rep *WordRepository) FindOne(id int) (model.WordModel, error) {
+
+	word := model.WordModel{}
+
+	queryMap := map[string]interface{}{"id": id}
+
+	query := fmt.Sprintf("SELECT id,word,word_data,is_reviewed,created_at,updated_at FROM words where id=:id")
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		fmt.Println(err)
+		return word, err
+	}
+	err = nstmt.Get(&word, queryMap)
+
+	if err != nil {
+		fmt.Println(err)
+		return word, err
+	}
+
+	return word, nil
+
+}

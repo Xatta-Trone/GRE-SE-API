@@ -27,6 +27,7 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	auth := admin.Use(middlewares.AuthMiddleware())
 
 	auth.GET("words", wordController.WordIndex)
+	auth.GET("words/:id", wordController.WordById)
 
 	return r
 
