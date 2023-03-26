@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -35,7 +34,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		}
 
-		fmt.Println(token)
+		// fmt.Println(token)
 
 		if token == "" {
 			c.AbortWithStatusJSON(401, gin.H{"error": "token missing"})
@@ -61,6 +60,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(401, gin.H{"error": "token mismatch"})
 			return
 		}
+
+		// fmt.Println(newJsonToken)
 
 		tokenExpired := newJsonToken.Expiration.Before(time.Now())
 

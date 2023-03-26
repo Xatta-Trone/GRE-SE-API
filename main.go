@@ -8,12 +8,20 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gookit/validate"
 	"github.com/joho/godotenv"
 	"github.com/xatta-trone/words-combinator/database"
-	"github.com/xatta-trone/words-combinator/middlewares"
+	"github.com/xatta-trone/words-combinator/routes"
 	"github.com/xatta-trone/words-combinator/services"
-	"github.com/xatta-trone/words-combinator/utils"
 )
+
+func init() {
+	// change global opts
+	validate.Config(func(opt *validate.GlobalOption) {
+		opt.StopOnError = false
+		opt.SkipOnEmpty = false
+	})
+}
 
 func main() {
 	start := time.Now()
@@ -27,39 +35,16 @@ func main() {
 
 	defer database.Gdb.Close()
 
+
+	// init services 
+	services.NewWordService(database.Gdb)
+
 	// http
 	gin.ForceConsoleColor()
 	r := gin.Default()
 
-	r.Use(middlewares.DummyMiddleware())
+	routes.Init(r)
 
-	r.GET("/ping", func(c *gin.Context) {
-
-		letter, _ := utils.GenerateRandomString(20)
-
-		c.JSON(200, gin.H{
-			"message": "pong" + letter,
-		})
-	})
-
-	r.GET("/token", func(c *gin.Context) {
-		token,_ := services.GenerateToken("dummy")
-
-		c.JSON(200, gin.H{
-			"message": token,
-		})
-	})
-
-	r.Use(middlewares.AuthMiddleware()).GET("/e", func(c *gin.Context) {
-		// token := c.Query("string")
-
-		data, exists := c.Get("data")
-
-		c.JSON(200, gin.H{
-			"message": data,
-			"a":       exists,
-		})
-	})
 
 	PORT := os.Getenv("PORT")
 	URL := ""
@@ -89,7 +74,6 @@ func main() {
 	// wg.Wait()
 
 	// csvimport.ReadAndImportNamedCsv("Barrons-333.csv", "Barron's 333")
-
 
 	// processor.ReadTableAndProcessWord("abase")
 

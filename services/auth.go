@@ -39,7 +39,7 @@ func GenerateToken(s string) (string, error) {
 
 	symmetricKey := []byte(key) // Must be 32 bytes
 	now := time.Now()
-	exp := now.Add(24 * time.Hour)
+	exp := now.Add(time.Duration(ttlInt) * time.Second)
 	nbt := now
 
 	jsonToken := paseto.JSONToken{
