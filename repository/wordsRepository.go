@@ -2,12 +2,21 @@ package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
 )
+
+// repository
+type WordRepositoryInterface interface {
+	FindAll(req requests.WordIndexReqStruct) ([]model.WordModel, error)
+	FindOne(id int) (model.WordModel, error)
+	DeleteOne(id int) (bool, error)
+	UpdateById(id int, data model.WordDataModel, isReviewed int) (bool, error)
+}
 
 type WordRepository struct {
 	Db *sqlx.DB
@@ -54,7 +63,7 @@ func (rep *WordRepository) FindOne(id int) (model.WordModel, error) {
 
 	queryMap := map[string]interface{}{"id": id}
 
-	query := fmt.Sprintf("SELECT id,word,word_data,is_reviewed,created_at,updated_at FROM words where id=:id")
+	query := "SELECT id,word,word_data,is_reviewed,created_at,updated_at FROM words where id=:id"
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -99,7 +108,46 @@ func (rep *WordRepository) DeleteOne(id int) (bool, error) {
 
 		return false, fmt.Errorf("number of rows affected %d", rows)
 	}
-	
+
+	return true, nil
+
+}
+
+func (rep *WordRepository) UpdateById(id int, wordData model.WordDataModel, isReviewed int) (bool, error) {
+
+	// marshal the data for inserting
+	data, err := json.Marshal(wordData)
+
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	queryMap := map[string]interface{}{"id": id, "word_data": string(data), "is_reviewed": isReviewed}
+
+	res, err := rep.Db.NamedExec("Update words set word_data=:word_data,is_reviewed=:is_reviewed, updated_at=now() where id=:id", queryMap)
+
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+
 	return true, nil
 
 }

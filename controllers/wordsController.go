@@ -8,14 +8,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/model"
+	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/requests"
 )
 
 type WordController struct {
-	wordRepository model.WordRepository
+	wordRepository repository.WordRepositoryInterface
 }
 
-func NewWordController(wordRepository model.WordRepository) *WordController {
+func NewWordController(wordRepository repository.WordRepositoryInterface) *WordController {
 	return &WordController{
 		wordRepository: wordRepository,
 	}
@@ -106,5 +107,72 @@ func (ctl *WordController) DeleteById(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusNoContent, gin.H{"deleted": true})
+
+}
+
+func (ctl *WordController) UpdateById(c *gin.Context) {
+
+	// validate the given id
+	id := c.Param("id")
+
+	idx, err := strconv.Atoi(id)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "The given id is not valid integer"})
+		return
+	}
+
+	fmt.Println(idx)
+
+	// check if record exists
+
+	// get the data
+	word, err := ctl.wordRepository.FindOne(idx)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	if word.Id != idx {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "Id mismatch"})
+		return
+	}
+
+	// validation request
+	req, errs := requests.WordUpdateRequest(c)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs.All()})
+		return
+	}
+
+	fmt.Println(req.IsReviewed)
+	fmt.Println(req.WordData)
+
+	wordData := model.WordDataModel{
+		Word:            word.Word,
+		PartsOfSpeeches: req.WordData,
+	}
+
+	// get the data
+	ok, err := ctl.wordRepository.UpdateById(idx, wordData, req.IsReviewed)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, gin.H{"updated": true})
 
 }

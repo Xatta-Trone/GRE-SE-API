@@ -2,8 +2,6 @@ package model
 
 import (
 	"time"
-
-	"github.com/xatta-trone/words-combinator/requests"
 )
 
 type WordModel struct {
@@ -13,11 +11,4 @@ type WordModel struct {
 	IsReviewed int           `json:"is_reviewed" db:"is_reviewed"`
 	CreatedAt  *time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt  *time.Time    `json:"updated_at" db:"updated_at"`
-}
-
-// repository
-type WordRepository interface {
-	FindAll(req requests.WordIndexReqStruct) ([]WordModel, error)
-	FindOne(id int) (WordModel, error)
-	DeleteOne(id int) (bool, error)
 }
