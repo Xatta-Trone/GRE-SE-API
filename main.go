@@ -34,6 +34,9 @@ func main() {
 
 	defer database.Gdb.Close()
 
+	// init seeder 
+	database.InitSeeder(database.Gdb)
+
 	// init services
 	// services.NewWordService(database.Gdb)
 
