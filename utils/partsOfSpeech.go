@@ -9,7 +9,7 @@ func GetPos(pos string) string {
 	case "noun", "noun.", "n", "n.":
 		return "noun"
 	case "adverb", "adverb.", "adv", "adv.":
-		return "noun"
+		return "adverb"
 	default:
 		return ""
 	}
