@@ -34,7 +34,7 @@ func main() {
 
 	defer database.Gdb.Close()
 
-	// init seeder 
+	// init seeder
 	database.InitSeeder(database.Gdb)
 
 	// init services
@@ -43,7 +43,7 @@ func main() {
 	// http
 	gin.ForceConsoleColor()
 	r := gin.Default()
-
+	r.MaxMultipartMemory = 8 << 20 // 8 MiB
 	routes.Init(r)
 
 	PORT := os.Getenv("PORT")

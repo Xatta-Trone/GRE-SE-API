@@ -14,6 +14,10 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	wordRepo := repository.NewWordRepository(database.Gdb)
 	wordController := controllers.NewWordController(wordRepo)
 
+	// word group
+	wordGroupRepo := repository.NewWordGroupRepository(database.Gdb)
+	wordGroupController := controllers.NewWordGroupController(wordGroupRepo)
+
 	admin := r.Group("/admin")
 
 	admin.GET("/login", func(c *gin.Context) {
@@ -26,12 +30,18 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 
 	auth := admin.Use(middlewares.AuthMiddleware())
 
+	// words
 	auth.GET("words", wordController.WordIndex)
 	auth.POST("words", wordController.WordSave)
 	auth.GET("words/:id", wordController.WordById)
 	auth.DELETE("words/:id", wordController.DeleteById)
 	auth.PUT("words/:id", wordController.UpdateById)
 	auth.PATCH("words/:id", wordController.UpdateById)
+
+	// word group csv import
+	auth.POST("/word-group", wordGroupController.Import)
+	auth.GET("/word-group/:id", wordGroupController.FindOne)
+	auth.DELETE("/word-group/:id", wordGroupController.DeleteById)
 
 	return r
 
