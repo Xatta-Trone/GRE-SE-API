@@ -119,7 +119,8 @@ func (wgService *WordGroupService) ProcessNewWords(newWords []model.WordModel, g
 	}
 
 	for _, word := range newWords {
-		processor.ReadTableAndProcessWord(word.Word)
+		// processor.ReadTableAndProcessWord(word.Word)
+		processor.ProcessSingleWordData(wgService.db, word)
 	}
 
 	// update the word groups id status to complete
