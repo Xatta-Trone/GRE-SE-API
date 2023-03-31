@@ -16,7 +16,34 @@ import (
 	"github.com/xatta-trone/words-combinator/utils"
 )
 
-func ProcessWordGroupData(wg model.WordGroupModel) {
+type WordGroupService struct {
+	db *sqlx.DB
+}
+
+type WordGroupServiceInterface interface {
+	ProcessWordGroupData(wg model.WordGroupModel)
+}
+
+type WordStruct struct {
+	Word string
+}
+
+func NewWordGroupService(db *sqlx.DB) *WordGroupService {
+	return &WordGroupService{db: db}
+}
+
+// ProcessWordGroupData function received a word group record
+// 1. then it reads the csv file
+// 2. then it reads the new words column
+// 3. combines all the words together
+// 4. then it inserts all words one by one into words table
+// 5. if the words table returns a id then its a new word => to be processed later
+// 5.a if it doesn't give a id back (0) then its a duplicate word and we continue
+// 6. then the new words returned from step 5 is inserted into a new slice called insertedWords(struct) and newWords(only word)
+// 7. then it fires InsertGroupRelation with the word group id and the []words
+// 8. then it updated the word_groups table with the new found unique words form this operation => newWords (InsertNewWordsToWordsGroupTable)
+// 9. then it fires a go routine where the new words are sent to be processed ProcessNewWords(insertedWords,word_group_id)
+func (wgService *WordGroupService) ProcessWordGroupData(wg model.WordGroupModel) {
 
 	fmt.Println(wg.Id, wg.Name, wg.FileName, wg.Words)
 
@@ -36,7 +63,7 @@ func ProcessWordGroupData(wg model.WordGroupModel) {
 		words = append(words, wordsFromFile...)
 	}
 
-	// check if we have some words or not
+	// check if we have some words other than getting from csv or not
 	if wg.Words != nil {
 		wordsFromDB := ReadWords(*wg.Words)
 		words = append(words, wordsFromDB...)
@@ -44,11 +71,11 @@ func ProcessWordGroupData(wg model.WordGroupModel) {
 	}
 
 	newWords := make([]string, 0)
-	insertedWords := make([]InsertedWordStruct, 0)
+	insertedWords := make([]model.WordModel, 0)
 	// now check the unique words
 	for _, word := range words {
 
-		wordId, err := InsertIntoWordsTable(word)
+		wordId, err := wgService.InsertIntoWordsTable(word)
 
 		if err != nil {
 			fmt.Println(err)
@@ -66,41 +93,27 @@ func ProcessWordGroupData(wg model.WordGroupModel) {
 			continue
 		}
 		// appending for further processing from the wordlist table
-		insertedWords = append(insertedWords, InsertedWordStruct{Word: word, Id: wordId})
+		insertedWords = append(insertedWords, model.WordModel{Word: word, Id: wordId})
 		// append into uniqueWords to use it in the words group relation table
 		newWords = append(newWords, word)
 
 	}
 
 	// now with the unique words make the word group relation table
-	InsertGroupRelation(words, wg.Id)
+	wgService.InsertGroupRelation(words, wg.Id)
 	// insert the unique words into the word_group database
-	InsertNewWordsToWordsGroupTable(newWords, wg.Id)
+	wgService.InsertNewWordsToWordsGroupTable(newWords, wg.Id)
 	// now get the new words meanings
-	go ProcessNewWords(insertedWords, wg.Id)
+	go wgService.ProcessNewWords(insertedWords, wg.Id)
 
 	// fmt.Println(words, uniqueWords, insertedWords)
 
 }
 
-type WordStruct struct {
-	Word string
-}
-
-type InsertedWordStruct struct {
-	Word string `db:"word"`
-	Id   int64  `db:"id"`
-}
-
-type WordGroupRelationMap struct {
-	WordId      int64 `db:"word_id"`
-	WordGroupId int64 `db:"word_group_id"`
-}
-
-func ProcessNewWords(newWords []InsertedWordStruct, groupId int64) {
+func (wgService *WordGroupService) ProcessNewWords(newWords []model.WordModel, groupId int64) {
 	query_group := `update word_groups set status = ?, updated_at=now() where id=?`
 	// update the word groups id status to processing
-	_, err := database.Gdb.Exec(query_group, enums.WordGroupProcessing, groupId)
+	_, err := wgService.db.Exec(query_group, enums.WordGroupProcessing, groupId)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -117,7 +130,7 @@ func ProcessNewWords(newWords []InsertedWordStruct, groupId int64) {
 
 }
 
-func InsertNewWordsToWordsGroupTable(newWords []string, groupId int64) {
+func (wgService *WordGroupService) InsertNewWordsToWordsGroupTable(newWords []string, groupId int64) {
 
 	query_group := `update word_groups set new_words = ?, updated_at=now() where id=?`
 
@@ -127,7 +140,7 @@ func InsertNewWordsToWordsGroupTable(newWords []string, groupId int64) {
 		wordsToInsert = strings.Join(newWords, ",")
 	}
 
-	res, err := database.Gdb.Exec(query_group, wordsToInsert, groupId)
+	res, err := wgService.db.Exec(query_group, wordsToInsert, groupId)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -142,9 +155,9 @@ func InsertNewWordsToWordsGroupTable(newWords []string, groupId int64) {
 
 }
 
-func InsertGroupRelation(words []string, groupId int64) {
+func (wgService *WordGroupService) InsertGroupRelation(words []string, groupId int64) {
 
-	wordMap := []InsertedWordStruct{}
+	wordMap := []model.WordModel{}
 
 	fmt.Println("inside InsertGroupRelation")
 	// fmt.Println(words)
@@ -155,7 +168,7 @@ func InsertGroupRelation(words []string, groupId int64) {
 	}
 
 	// this will pull words into the slice wordMap
-	err = database.Gdb.Select(&wordMap, query, param...)
+	err = wgService.db.Select(&wordMap, query, param...)
 
 	if err != nil {
 		fmt.Println(err)
@@ -164,10 +177,10 @@ func InsertGroupRelation(words []string, groupId int64) {
 	// fmt.Println(wordMap)
 
 	// make the word groups
-	wordGroupRelations := make([]WordGroupRelationMap, 0)
+	wordGroupRelations := make([]model.WordGroupRelationModel, 0)
 
 	for _, word := range wordMap {
-		wordGroupRelations = append(wordGroupRelations, WordGroupRelationMap{WordId: word.Id, WordGroupId: groupId})
+		wordGroupRelations = append(wordGroupRelations, model.WordGroupRelationModel{WordId: word.Id, WordGroupId: groupId})
 
 		// fmt.Println(word)
 
@@ -176,7 +189,7 @@ func InsertGroupRelation(words []string, groupId int64) {
 	// fmt.Println(wordGroupRelations)
 
 	query_group := `INSERT INTO word_group_relation(word_id,word_group_id,created_at) VALUES (:word_id,:word_group_id,now())`
-	res, err := database.Gdb.NamedExec(query_group, wordGroupRelations)
+	res, err := wgService.db.NamedExec(query_group, wordGroupRelations)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -191,11 +204,11 @@ func InsertGroupRelation(words []string, groupId int64) {
 
 }
 
-func InsertIntoWordsTable(word string) (int64, error) {
+func (wgService *WordGroupService) InsertIntoWordsTable(word string) (int64, error) {
 	const insertQuery = "INSERT INTO words(word,created_at) SELECT :word, now() WHERE NOT EXISTS (SELECT word FROM words WHERE word = :word);"
 	w := WordStruct{Word: word}
 
-	res, err := database.Gdb.NamedExec(insertQuery, w)
+	res, err := wgService.db.NamedExec(insertQuery, w)
 
 	if err != nil {
 		return -1, err

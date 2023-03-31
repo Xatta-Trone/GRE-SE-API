@@ -18,21 +18,21 @@ import (
 )
 
 type WordGroupController struct {
-	WgRepo repository.WordGroupInterface
+	WgRepo    repository.WordGroupInterface
+	wgService services.WordGroupServiceInterface
 }
 
-func NewWordGroupController(wordGroupRepo repository.WordGroupInterface) *WordGroupController {
+func NewWordGroupController(wordGroupRepo repository.WordGroupInterface, wgService services.WordGroupServiceInterface) *WordGroupController {
 	return &WordGroupController{
-		WgRepo: wordGroupRepo,
+		WgRepo:    wordGroupRepo,
+		wgService: wgService,
 	}
 }
-
 
 func (ctl *WordGroupController) Index(c *gin.Context) {
 
 	// validation request
 	req, errs := requests.WordsGroupIndexRequest(c)
-	
 
 	fmt.Println(req)
 
@@ -112,7 +112,7 @@ func (ctl *WordGroupController) Import(c *gin.Context) {
 	}
 
 	// fire the word process service
-	go services.ProcessWordGroupData(wordGroup)
+	go ctl.wgService.ProcessWordGroupData(wordGroup)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"data": wordGroup,

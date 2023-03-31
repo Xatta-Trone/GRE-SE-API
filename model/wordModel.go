@@ -5,7 +5,7 @@ import (
 )
 
 type WordModel struct {
-	Id         int           `json:"id"`
+	Id         int64           `json:"id"`
 	Word       string        `json:"word"`
 	WordData   WordDataModel `json:"word_data" db:"word_data"`
 	IsReviewed int           `json:"is_reviewed" db:"is_reviewed"`

@@ -16,7 +16,8 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 
 	// word group
 	wordGroupRepo := repository.NewWordGroupRepository(database.Gdb)
-	wordGroupController := controllers.NewWordGroupController(wordGroupRepo)
+	wordGroupService := services.NewWordGroupService(database.Gdb)
+	wordGroupController := controllers.NewWordGroupController(wordGroupRepo,wordGroupService)
 
 	admin := r.Group("/admin")
 
@@ -39,10 +40,10 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	auth.PATCH("words/:id", wordController.UpdateById)
 
 	// word group csv import
-	auth.GET("/word-group", wordGroupController.Index)
-	auth.POST("/word-group", wordGroupController.Import)
-	auth.GET("/word-group/:id", wordGroupController.FindOne)
-	auth.DELETE("/word-group/:id", wordGroupController.DeleteById)
+	auth.GET("/word-groups", wordGroupController.Index)
+	auth.POST("/word-groups", wordGroupController.Import)
+	auth.GET("/word-groups/:id", wordGroupController.FindOne)
+	auth.DELETE("/word-groups/:id", wordGroupController.DeleteById)
 
 	return r
 

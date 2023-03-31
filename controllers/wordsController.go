@@ -171,7 +171,7 @@ func (ctl *WordController) UpdateById(c *gin.Context) {
 		return
 	}
 
-	if word.Id != idx {
+	if word.Id != int64(idx) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": "Id mismatch"})
 		return
 	}
