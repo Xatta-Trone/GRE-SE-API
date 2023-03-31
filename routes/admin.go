@@ -39,6 +39,7 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	auth.PATCH("words/:id", wordController.UpdateById)
 
 	// word group csv import
+	auth.GET("/word-group", wordGroupController.Index)
 	auth.POST("/word-group", wordGroupController.Import)
 	auth.GET("/word-group/:id", wordGroupController.FindOne)
 	auth.DELETE("/word-group/:id", wordGroupController.DeleteById)

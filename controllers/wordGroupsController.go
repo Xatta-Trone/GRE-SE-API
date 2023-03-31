@@ -27,6 +27,35 @@ func NewWordGroupController(wordGroupRepo repository.WordGroupInterface) *WordGr
 	}
 }
 
+
+func (ctl *WordGroupController) Index(c *gin.Context) {
+
+	// validation request
+	req, errs := requests.WordsGroupIndexRequest(c)
+	
+
+	fmt.Println(req)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs.All()})
+		return
+	}
+
+	// get the data
+	word, err := ctl.WgRepo.FindAll(req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"data": word,
+		"meta": req,
+	})
+
+}
+
 func (ctl *WordGroupController) Import(c *gin.Context) {
 
 	// validation request

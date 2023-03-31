@@ -66,10 +66,11 @@ func main() {
 	// // // populate google result
 	// wg.Add(1)
 	// // go scrapper.GetGoogleResult(&wg)
-	// go scrapper.GetWikiResult(&wg)
+	// // go scrapper.GetWikiResult(&wg)
 	//  // go scrapper.GetThesaurusResult(&wg)
 	// // go scrapper.GetWordsResult(&wg)
 	// // // go scrapper.GetNinjaResult(&wg)
+	// go scrapper.GetMWResult(&wg)
 
 	// wg.Wait()
 
