@@ -11,7 +11,7 @@ type WordGroupCreateReqStruct struct {
 	Name     string                `json:"name" form:"name" `
 	File     *multipart.FileHeader `json:"file" form:"file" `
 	Words    *string               `json:"words" form:"words"`
-	FileName string                `json:"file_name" db:"file_name"`
+	FileName *string                `json:"file_name" db:"file_name"`
 }
 
 func (c WordGroupCreateReqStruct) Validate() error {

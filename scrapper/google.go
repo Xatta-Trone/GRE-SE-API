@@ -2,15 +2,75 @@ package scrapper
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/database"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/utils"
 )
+
+// GetGoogleResultAndSave goes to google and retrieves the google result and saves to db
+func GetGoogleResultAndSave(db *sqlx.DB, word model.Result) {
+
+	utils.PrintS(fmt.Sprintf("Getting %v - %s from google \n", word.ID, word.Word))
+
+	// get the google scrapper url
+
+	googleUrl := os.Getenv("GOOGLE_URL")
+
+	if googleUrl == "" {
+		utils.PrintR("No google url found")
+		return
+	}
+
+	// we have the google url
+	res, err := http.Get(fmt.Sprintf("%s/word/%s", googleUrl, word.Word))
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusOK {
+		// insert into the db
+		body, _ := io.ReadAll(res.Body)
+		_, err := db.Exec("Update wordlist set google=?,is_google_parsed=1,updated_at=now() where id = ? ", string(body), word.ID)
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		utils.PrintG(fmt.Sprintf("Inserted %v - %s from google \n", word.ID, word.Word))
+
+	}
+
+	if res.StatusCode == http.StatusNotFound {
+		_, err := db.Exec("Update wordlist set google_try= google_try+1,updated_at=now() where id = ? ", word.ID)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from google \n", word.ID, word.Word))
+
+	}
+
+	if res.StatusCode == http.StatusTooManyRequests {
+		color.Red("Too many attempts :: google")
+		time.Sleep(4 * time.Minute)
+		GetGoogleResultAndSave(db, word)
+	}
+
+}
 
 func GetGoogleResult(wg *sync.WaitGroup) {
 	defer wg.Done()

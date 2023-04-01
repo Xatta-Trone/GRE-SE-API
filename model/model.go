@@ -23,7 +23,7 @@ type Result struct {
 	Word      string
 	Google    Google
 	Wiki      Wiki     `db:"wiki"`
-	WordsApi  WordsApi `db:"words_api"` // because sqlx will look for column wordsapi by default
+	WordsApi  WordsApi `db:"words_api"` // because sqlx will look for column words-api by default
 	Thesaurus Thesaurus
 	Ninja     sql.NullString
 }

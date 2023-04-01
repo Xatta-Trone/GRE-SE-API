@@ -61,7 +61,7 @@ func (ctl *WordGroupController) Import(c *gin.Context) {
 	// validation request
 	req, errs := requests.WordGroupCreateRequest(c)
 
-	fmt.Println(req, errs)
+	fmt.Println(req, errs,)
 
 	if errs != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
@@ -69,7 +69,7 @@ func (ctl *WordGroupController) Import(c *gin.Context) {
 	}
 
 	// upload the file if present
-	filePath := ""
+	var filePath *string
 
 	if req.File != nil {
 		file, header, err := c.Request.FormFile("file")
@@ -84,7 +84,8 @@ func (ctl *WordGroupController) Import(c *gin.Context) {
 		originalFileName := strings.TrimSuffix(filepath.Base(header.Filename), filepath.Ext(header.Filename))
 		now := time.Now()
 		filename := strings.ReplaceAll(strings.ToLower(originalFileName), " ", "-") + "-" + fmt.Sprintf("%v", now.Unix()) + fileExt
-		filePath = "uploads/" + filename
+		fileP := "uploads/" + filename
+		filePath = &fileP
 
 		out, err := os.Create("uploads/" + filename)
 

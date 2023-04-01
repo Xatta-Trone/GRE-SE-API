@@ -75,6 +75,10 @@ func (wgService *WordGroupService) ProcessWordGroupData(wg model.WordGroupModel)
 	// now check the unique words
 	for _, word := range words {
 
+		if word == "" {
+			continue
+		}
+
 		wordId, err := wgService.InsertIntoWordsTable(word)
 
 		if err != nil {

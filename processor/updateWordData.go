@@ -9,28 +9,69 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/model"
+	"github.com/xatta-trone/words-combinator/scrapper"
 	"github.com/xatta-trone/words-combinator/utils"
 )
 
 func ProcessSingleWordData(db *sqlx.DB, word model.WordModel) {
 
 	// check if the there is data in the wordlist table
-
 	data, err := CheckWordListTable(db, word)
+
+	fmt.Println("===inside ProcessSingleWordData ==")
+	// fmt.Println(data, err)
+
+	if err == sql.ErrNoRows {
+		// if no then insert into wordlist and get the wordlist data
+		wordListModel, err := InsertIntoWordListTable(db, word.Word)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		// then process the data
+		scrapper.ScrapWordById(db, wordListModel)
+		// then process this result again
+		ProcessSingleWordData(db, word)
+
+	}
 
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
-	// if yes process the data
-	processedData, _ := ProcessWordData(db, data)
+	if data.ID != 0 {
+		// if yes process the data
+		processedData, _ := ProcessWordData(db, data)
+		// save to the database
+		SaveProcessedDataToWordTable(db, word, processedData)
 
-	// if no then insert into wordlist and get the wordlist data
+	}
 
-	// then process the data
+}
 
-	// save to the database
-	SaveProcessedDataToWordTable(db, word, processedData)
+func InsertIntoWordListTable(db *sqlx.DB, word string) (model.Result, error) {
+	var model model.Result
+
+	_, err := db.Exec("INSERT IGNORE INTO wordlist(word,created_at,updated_at) values (?,now(),now())", word)
+
+	if err != nil {
+		fmt.Println(err)
+		return model, err
+	}
+
+	query := "SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus` FROM `wordlist` WHERE `word` = ?;"
+
+	result := db.QueryRowx(query, word)
+
+	err = result.StructScan(&model)
+
+	if err != nil {
+		fmt.Println(err)
+		return model, err
+	}
+
+	return model, nil
 
 }
 

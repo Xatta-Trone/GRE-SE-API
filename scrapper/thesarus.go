@@ -2,15 +2,77 @@ package scrapper
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/database"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/utils"
 )
+
+// GetThesaurusResultAndSave goes to thesaurus and retrieves the result and saves to db
+func GetThesaurusResultAndSave(db *sqlx.DB, word model.Result) {
+
+	utils.PrintS(fmt.Sprintf("Getting %v - %s from thesaurus \n", word.ID, word.Word))
+
+	// get the scrapper url
+
+	url := os.Getenv("THESAURUS_URL")
+
+	if url == "" {
+		utils.PrintR("No thesaurus url found")
+		return
+	}
+
+	// we have the thesaurus url
+	res, err := http.Get(fmt.Sprintf("%s/%s", url, word.Word))
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusOK {
+		// insert into the db
+		body, _ := io.ReadAll(res.Body)
+		_, err := db.Exec("Update wordlist set thesaurus=?,is_parsed_th=1,updated_at=now() where id = ? ", string(body), word.ID)
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		utils.PrintG(fmt.Sprintf("Inserted %v - %s from thesaurus \n", word.ID, word.Word))
+
+	}
+
+	if res.StatusCode == http.StatusNotFound {
+		_, err := db.Exec("Update wordlist set th_try= th_try+1,updated_at=now() where id = ? ", word.ID)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from thesaurus \n", word.ID, word.Word))
+
+	}
+
+	if res.StatusCode == http.StatusTooManyRequests {
+		color.Red("Too many attempts :: google")
+		time.Sleep(4 * time.Minute)
+		GetThesaurusResultAndSave(db, word)
+	}
+
+}
+
+
 
 func GetThesaurusResult(wg *sync.WaitGroup) {
 	defer wg.Done()
