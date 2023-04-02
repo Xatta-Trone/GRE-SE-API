@@ -177,8 +177,8 @@ func ProcessWordData(db *sqlx.DB, wordlist model.Result) ([]model.Combined, erro
 	}
 
 	// 2. Process the wikipedia result
-	fmt.Println("wiki")
-	fmt.Println(wordlist.Wiki)
+	// fmt.Println("wiki")
+	// fmt.Println(wordlist.Wiki)
 
 
 		for _, wikiPos := range wordlist.Wiki.PartsOfSpeeches {
@@ -214,8 +214,8 @@ func ProcessWordData(db *sqlx.DB, wordlist model.Result) ([]model.Combined, erro
 
 	
 
-	fmt.Println("words api")
-	fmt.Println(wordlist.WordsApi)
+	// fmt.Println("words api")
+	// fmt.Println(wordlist.WordsApi)
 	// 3.process words api result
 
 		for _, wAPos := range wordlist.WordsApi.Results {
@@ -253,8 +253,8 @@ func ProcessWordData(db *sqlx.DB, wordlist model.Result) ([]model.Combined, erro
 	
 
 	// 4. process thesaurus data
-	fmt.Println("thesaurus api")
-	fmt.Println(wordlist.Thesaurus)
+	// fmt.Println("thesaurus api")
+	// fmt.Println(wordlist.Thesaurus)
 	if  len(wordlist.Thesaurus.Data.Synonyms) > 0 {
 		for _, tPos := range wordlist.Thesaurus.Data.Synonyms {
 			// get the parts of speech
@@ -288,8 +288,8 @@ func ProcessWordData(db *sqlx.DB, wordlist model.Result) ([]model.Combined, erro
 	}
 
 	// 5.0 process the MW data
-	fmt.Println("MW api")
-	fmt.Println(wordlist.Mw)
+	// fmt.Println("MW api")
+	// fmt.Println(wordlist.Mw)
 	if  len(wordlist.Mw.Data.PartsOfSpeeches) > 0 {
 		for _, tPos := range wordlist.Mw.Data.PartsOfSpeeches {
 			// get the parts of speech
@@ -377,7 +377,11 @@ func SaveProcessedDataToWordTable(db *sqlx.DB, word model.WordModel, wordData []
 		fmt.Println(err.(*errors.Error).ErrorStack())
 	}
 	// insert the word into the words table
-	data, err := json.Marshal(wordData)
+	wodDataModel := model.WordDataModel{
+		Word: word.Word,
+		PartsOfSpeeches: wordData,
+	}
+	data, err := json.Marshal(wodDataModel)
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
 	}
