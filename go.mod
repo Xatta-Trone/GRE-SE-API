@@ -22,6 +22,7 @@ require (
 	github.com/bytedance/sonic v1.8.6 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-faker/faker/v4 v4.1.0 // indirect
 	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible // indirect
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
@@ -46,7 +47,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/onsi/ginkgo/v2 v2.9.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.7 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.8.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-19 v0.2.1 // indirect
 	github.com/quic-go/qtls-go1-20 v0.1.1 // indirect

@@ -14,6 +14,7 @@ import (
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/processor"
 	"github.com/xatta-trone/words-combinator/utils"
+	errs "github.com/go-errors/errors"
 )
 
 type WordGroupService struct {
@@ -56,7 +57,8 @@ func (wgService *WordGroupService) ProcessWordGroupData(wg model.WordGroupModel)
 		wordsFromFile, err := ReadCsv(*wg.FileName)
 
 		if err != nil {
-			fmt.Printf("err %s \n", err)
+			fmt.Println(errs.New(err).ErrorStack())
+			fmt.Println(err.(*errs.Error).ErrorStack())
 			return
 		}
 
@@ -120,6 +122,7 @@ func (wgService *WordGroupService) ProcessNewWords(newWords []model.WordModel, g
 	_, err := wgService.db.Exec(query_group, enums.WordGroupProcessing, groupId)
 	if err != nil {
 		fmt.Println(err)
+		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
 	for _, word := range newWords {
@@ -131,6 +134,7 @@ func (wgService *WordGroupService) ProcessNewWords(newWords []model.WordModel, g
 	_, err = database.Gdb.Exec(query_group, enums.WordGroupComplete, groupId)
 	if err != nil {
 		fmt.Println(err)
+		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
 }
@@ -148,6 +152,7 @@ func (wgService *WordGroupService) InsertNewWordsToWordsGroupTable(newWords []st
 	res, err := wgService.db.Exec(query_group, wordsToInsert, groupId)
 	if err != nil {
 		fmt.Println(err)
+		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
 	rowsAffected, _ := res.RowsAffected()
@@ -170,6 +175,7 @@ func (wgService *WordGroupService) InsertGroupRelation(words []string, groupId i
 	query, param, err := sqlx.In("SELECT id, word FROM words WHERE word in (?)", words)
 	if err != nil {
 		log.Fatal(err)
+		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
 	// this will pull words into the slice wordMap
@@ -177,6 +183,7 @@ func (wgService *WordGroupService) InsertGroupRelation(words []string, groupId i
 
 	if err != nil {
 		fmt.Println(err)
+		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
 	// fmt.Println(wordMap)
@@ -197,6 +204,7 @@ func (wgService *WordGroupService) InsertGroupRelation(words []string, groupId i
 	res, err := wgService.db.NamedExec(query_group, wordGroupRelations)
 	if err != nil {
 		fmt.Println(err)
+		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
 	rowsAffected, _ := res.RowsAffected()
@@ -216,13 +224,14 @@ func (wgService *WordGroupService) InsertIntoWordsTable(word string) (int64, err
 	res, err := wgService.db.NamedExec(insertQuery, w)
 
 	if err != nil {
+		fmt.Println(err.(*errs.Error).ErrorStack())
 		return -1, err
 	}
 
 	id, err := res.LastInsertId()
 
 	if err != nil {
-		// log.Fatal("last insert", err)
+		fmt.Println(err.(*errs.Error).ErrorStack())
 		return -1, err
 	}
 
@@ -237,6 +246,7 @@ func ReadCsv(filePath string) ([]string, error) {
 	f, err := os.Open(filePath)
 
 	if err != nil {
+		fmt.Println(err.(*errs.Error).ErrorStack())
 		return nil, err
 	}
 
@@ -252,6 +262,7 @@ func ReadCsv(filePath string) ([]string, error) {
 		}
 
 		if err != nil {
+			fmt.Println(err.(*errs.Error).ErrorStack())
 			return nil, err
 		}
 

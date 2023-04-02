@@ -21,11 +21,11 @@ type ChatResp struct {
 type Result struct {
 	ID        uint64
 	Word      string
-	Google    *Google
-	Wiki      *Wiki     `db:"wiki"`
-	WordsApi  *WordsApi `db:"words_api"` // because sqlx will look for column words-api by default
-	Thesaurus *Thesaurus
-	Mw        *MW
+	Google    Google
+	Wiki      Wiki     `db:"wiki"`
+	WordsApi  WordsApi `db:"words_api"` // because sqlx will look for column words-api by default
+	Thesaurus Thesaurus
+	Mw        MwModel `db:"mw"`
 	Ninja     sql.NullString
 }
 
@@ -181,12 +181,15 @@ func (ws *Thesaurus) Value() (driver.Value, error) {
 	return json.Marshal(ws)
 }
 
-type MW struct {
-	Word            string            `json:"word"`
-	PartsOfSpeeches []PartsOfSpeeches `json:"parts_of_speeches"`
+type MwModel struct {
+	Data Mw `json:"data"`
+}
+type Mw struct {
+	Word            string              `json:"word"`
+	PartsOfSpeeches []MWPartsOfSpeeches `json:"parts_of_speeches"`
 }
 
-type PartsOfSpeeches struct {
+type MWPartsOfSpeeches struct {
 	PartsOfSpeech string   `json:"parts_of_speech"`
 	Data          []MWData `json:"data"`
 }
@@ -199,7 +202,7 @@ type MWData struct {
 	Antonyms   []string `json:"antonyms"`
 }
 
-func (ws *MW) Scan(val interface{}) error {
+func (ws *MwModel) Scan(val interface{}) error {
 	switch v := val.(type) {
 	case []byte:
 		json.Unmarshal(v, &ws)
@@ -213,6 +216,6 @@ func (ws *MW) Scan(val interface{}) error {
 		return fmt.Errorf("unsupported type: %T", v)
 	}
 }
-func (ws *MW) Value() (driver.Value, error) {
+func (ws *MwModel) Value() (driver.Value, error) {
 	return json.Marshal(ws)
 }
