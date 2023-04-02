@@ -35,7 +35,7 @@ func (rep *UserRepository) Index(r requests.UsersIndexReqStruct) ([]model.UserMo
 
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT id,name,email,username,created_at FROM users where name like :query or email like :query or username like :query  and id > :id order by id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT id,name,email,username,created_at,updated_at FROM users where name like :query or email like :query or username like :query  and id > :id order by id %s limit :limit offset :offset", order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
