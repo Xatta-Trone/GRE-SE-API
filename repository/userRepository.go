@@ -119,7 +119,7 @@ func (rep *UserRepository) Create(req *requests.UsersCreateRequestStruct) (model
 
 	queryMap := map[string]interface{}{"name": req.Name, "email": req.Email, "username": username, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
 
-	res, err := rep.Db.NamedExec("Insert into  users(name,email,username, created_at,updated_at) values(:name,:email,:username,now(),now())", queryMap)
+	res, err := rep.Db.NamedExec("Insert into  users(name,email,username, created_at,updated_at) values(:name,:email,:username,:created_at,:updated_at)", queryMap)
 
 	if err != nil {
 		fmt.Println(err)
