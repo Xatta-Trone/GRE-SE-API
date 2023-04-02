@@ -93,7 +93,8 @@ func GetMWResult(wg *sync.WaitGroup) {
 		time.Sleep(200 * time.Millisecond)
 		fmt.Printf("Getting %v - %s from MW \n", word.ID, word.Word)
 
-		res, err := http.Get(fmt.Sprintf("http://localhost:8081/mw/%s", word.Word))
+		// res, err := http.Get(fmt.Sprintf("http://localhost:8081/mw/%s", word.Word))
+		res, err := http.Get(fmt.Sprintf("https://thesaurus.gre-sentence-equivalence.com/mw/%s", word.Word))
 
 		if err != nil {
 			fmt.Println(err)

@@ -21,10 +21,11 @@ type ChatResp struct {
 type Result struct {
 	ID        uint64
 	Word      string
-	Google    Google
-	Wiki      Wiki     `db:"wiki"`
-	WordsApi  WordsApi `db:"words_api"` // because sqlx will look for column words-api by default
-	Thesaurus Thesaurus
+	Google    *Google
+	Wiki      *Wiki     `db:"wiki"`
+	WordsApi  *WordsApi `db:"words_api"` // because sqlx will look for column words-api by default
+	Thesaurus *Thesaurus
+	Mw        *MW
 	Ninja     sql.NullString
 }
 
@@ -177,5 +178,41 @@ func (ws *Thesaurus) Scan(val interface{}) error {
 	}
 }
 func (ws *Thesaurus) Value() (driver.Value, error) {
+	return json.Marshal(ws)
+}
+
+type MW struct {
+	Word            string            `json:"word"`
+	PartsOfSpeeches []PartsOfSpeeches `json:"parts_of_speeches"`
+}
+
+type PartsOfSpeeches struct {
+	PartsOfSpeech string   `json:"parts_of_speech"`
+	Data          []MWData `json:"data"`
+}
+
+type MWData struct {
+	AsIn       string   `json:"as_in"`
+	Definition string   `json:"definition"`
+	Example    string   `json:"example"`
+	Synonyms   []string `json:"synonyms"`
+	Antonyms   []string `json:"antonyms"`
+}
+
+func (ws *MW) Scan(val interface{}) error {
+	switch v := val.(type) {
+	case []byte:
+		json.Unmarshal(v, &ws)
+		return nil
+	case string:
+		json.Unmarshal([]byte(v), &ws)
+		return nil
+	case nil:
+		return nil
+	default:
+		return fmt.Errorf("unsupported type: %T", v)
+	}
+}
+func (ws *MW) Value() (driver.Value, error) {
 	return json.Marshal(ws)
 }

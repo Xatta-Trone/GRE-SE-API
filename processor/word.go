@@ -15,7 +15,7 @@ func ReadTableAndProcessWord(word string) {
 
 	fmt.Println("getting word result for ", word)
 
-	rs := database.Gdb.QueryRowx("SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus` FROM `wordlist` WHERE `word` = ?;", word)
+	rs := database.Gdb.QueryRowx("SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus`,`mw` FROM `wordlist` WHERE `word` = ?;", word)
 
 	var r model.Result
 

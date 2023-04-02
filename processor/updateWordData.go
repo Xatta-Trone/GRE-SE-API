@@ -60,7 +60,7 @@ func InsertIntoWordListTable(db *sqlx.DB, word string) (model.Result, error) {
 		return model, err
 	}
 
-	query := "SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus` FROM `wordlist` WHERE `word` = ?;"
+	query := "SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus`,`mw` FROM `wordlist` WHERE `word` = ?;"
 
 	result := db.QueryRowx(query, word)
 
@@ -77,7 +77,7 @@ func InsertIntoWordListTable(db *sqlx.DB, word string) (model.Result, error) {
 
 func CheckWordListTable(db *sqlx.DB, word model.WordModel) (model.Result, error) {
 
-	query := "SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus` FROM `wordlist` WHERE `word` = ?;"
+	query := "SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus`,`mw` FROM `wordlist` WHERE `word` = ?;"
 
 	result := db.QueryRowx(query, word.Word)
 
