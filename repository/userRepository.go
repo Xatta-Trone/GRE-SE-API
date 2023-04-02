@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
+	"github.com/xatta-trone/words-combinator/services"
 )
 
 type UserRepositoryInterface interface {
@@ -114,7 +115,9 @@ func (rep *UserRepository) Create(req *requests.UsersCreateRequestStruct) (model
 
 	var newRecord model.UserModel
 
-	queryMap := map[string]interface{}{"name": req.Name, "email": req.Email, "username": "asdf" + string(time.Now().Unix()), "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
+	username := services.GeneRateUserName(*rep.Db)
+
+	queryMap := map[string]interface{}{"name": req.Name, "email": req.Email, "username": username, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
 
 	res, err := rep.Db.NamedExec("Insert into  users(name,email,username, created_at,updated_at) values(:name,:email,:username,now(),now())", queryMap)
 
