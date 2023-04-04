@@ -14,9 +14,12 @@ import (
 type UserRepositoryInterface interface {
 	Index(req requests.UsersIndexReqStruct) ([]model.UserModel, error)
 	FindOne(id int) (model.UserModel, error)
+	FindOneByEmail(email string) (model.UserModel, error)
+	FindOneByUserName(username string) (model.UserModel, error)
 	Delete(id int) (bool, error)
 	Create(req *requests.UsersCreateRequestStruct) (model.UserModel, error)
 	Update(id int, req *requests.UsersUpdateRequestStruct) (bool, error)
+	UpdateUserName(id uint64, username string) (bool, error)
 }
 
 type UserRepository struct {
@@ -61,6 +64,56 @@ func (rep *UserRepository) FindOne(id int) (model.UserModel, error) {
 	queryMap := map[string]interface{}{"id": id}
 
 	query := "SELECT id,name,email,username,created_at FROM users where id=:id"
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		fmt.Println(err)
+		return modelx, err
+	}
+	err = nstmt.Get(&modelx, queryMap)
+
+	if err != nil {
+		fmt.Println(err)
+		return modelx, err
+	}
+
+	return modelx, nil
+
+}
+
+func (rep *UserRepository) FindOneByEmail(email string) (model.UserModel, error) {
+
+	modelx := model.UserModel{}
+
+	queryMap := map[string]interface{}{"email": email}
+
+	query := "SELECT id,name,email,username,created_at FROM users where email=:email"
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		fmt.Println(err)
+		return modelx, err
+	}
+	err = nstmt.Get(&modelx, queryMap)
+
+	if err != nil {
+		fmt.Println(err)
+		return modelx, err
+	}
+
+	return modelx, nil
+
+}
+
+func (rep *UserRepository) FindOneByUserName(username string) (model.UserModel, error) {
+
+	modelx := model.UserModel{}
+
+	queryMap := map[string]interface{}{"username": username}
+
+	query := "SELECT id,name,email,username,created_at FROM users where username=:username"
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -153,6 +206,36 @@ func (rep *UserRepository) Update(id int, req *requests.UsersUpdateRequestStruct
 	queryMap := map[string]interface{}{"id": id, "name": req.Name, "email": req.Email, "username": req.UserName, "updated_at": time.Now().UTC()}
 
 	res, err := rep.Db.NamedExec("Update users set name=:name,email=:email,username=:username,updated_at=:updated_at where id=:id", queryMap)
+
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+
+	return true, nil
+
+}
+
+func (rep *UserRepository) UpdateUserName(id uint64, username string) (bool, error) {
+
+	queryMap := map[string]interface{}{"id": id, "username": username, "updated_at": time.Now().UTC()}
+
+	res, err := rep.Db.NamedExec("Update users set username=:username,updated_at=:updated_at where id=:id", queryMap)
 
 	if err != nil {
 		fmt.Println(err)

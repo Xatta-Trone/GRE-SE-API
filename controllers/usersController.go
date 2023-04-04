@@ -124,9 +124,6 @@ func (ctl *UsersController) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
 	}
-
-	// fire the word process service
-
 	c.JSON(http.StatusCreated, gin.H{
 		"data": user,
 	})
