@@ -1,12 +1,14 @@
 package middlewares
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/o1egl/paseto"
+	"github.com/xatta-trone/words-combinator/model"
 )
 
 func PublicAuthMiddleware() gin.HandlerFunc {
@@ -71,6 +73,15 @@ func PublicAuthMiddleware() gin.HandlerFunc {
 		}
 
 		c.Set("email", newJsonToken.Get("email"))
+		c.Set("user_id", newJsonToken.Get("user_id"))
+		userData := newJsonToken.Get("user")
+		var user model.UserModel
+
+		err = json.Unmarshal([]byte(userData),&user)
+
+		if err == nil {
+			c.Set("user", user)
+		}
 
 		c.Next()
 	}

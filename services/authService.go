@@ -1,16 +1,18 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/o1egl/paseto"
+	"github.com/xatta-trone/words-combinator/model"
 )
 
 type AuthInterface interface {
-	 GenerateTokenFromEmail(email string) (string, error)
+	 GenerateTokenFromEmail(user model.UserModel) (string, error)
 	//  ValidateToken(s string) string
 }
 
@@ -23,7 +25,7 @@ func NewAuthService()*AuthService{
 }
 
 
-func (a *AuthService) GenerateTokenFromEmail(email string) (string, error) {
+func (a *AuthService) GenerateTokenFromEmail(user model.UserModel) (string, error) {
 
 	// get the key
 	key := os.Getenv("AUTH_KEY")
@@ -54,14 +56,18 @@ func (a *AuthService) GenerateTokenFromEmail(email string) (string, error) {
 	jsonToken := paseto.JSONToken{
 		Audience:   "gre-sentence-equivalence.com",
 		Issuer:     "gre-sentence-equivalence.com",
-		Jti:        email,
-		Subject:    email,
+		Jti:        user.Email,
+		Subject:    strconv.Itoa(int(user.ID)),
 		IssuedAt:   now,
 		Expiration: exp,
 		NotBefore:  nbt,
+		 
 	}
 	// Add custom claim    to the token
-	jsonToken.Set("email", email)
+	userData,_ := json.Marshal(user)
+	jsonToken.Set("email", user.Email)
+	jsonToken.Set("user_id", strconv.Itoa(int(user.ID)))
+	jsonToken.Set("user",string(userData))
 	footer := "gre-sentence-equivalence.com"
 
 	// Encrypt data

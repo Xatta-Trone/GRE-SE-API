@@ -75,7 +75,7 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	}
 
 	// record found, now issue a token
-	token, err := ctl.authService.GenerateTokenFromEmail(user.Email)
+	token, err := ctl.authService.GenerateTokenFromEmail(user)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})

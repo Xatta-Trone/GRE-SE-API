@@ -31,5 +31,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.PUT("/update", authController.Update)
 	authRoutes.PATCH("/update", authController.Update)
 
+	
+
 	return r
 }
