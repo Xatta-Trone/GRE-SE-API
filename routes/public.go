@@ -15,6 +15,8 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authService := services.NewAuthService()
 	authController := publicController.NewAuthController(userRepo, authService)
 
+	// list controller 
+
 	public := r.Group("/")
 
 	public.POST("/register", authController.Register)
@@ -31,7 +33,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.PUT("/update", authController.Update)
 	authRoutes.PATCH("/update", authController.Update)
 
-	
+
 
 	return r
 }
