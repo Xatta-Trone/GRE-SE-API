@@ -12,6 +12,7 @@ import (
 	"github.com/xatta-trone/words-combinator/enums"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/processor"
+	"github.com/xatta-trone/words-combinator/scrapper"
 	"github.com/xatta-trone/words-combinator/utils"
 )
 
@@ -55,6 +56,9 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 	if listMeta.Url != nil {
 		// fire url processor
 		fmt.Println(*listMeta.Url)
+		listService.ProcessWordsFromUrl(listMeta)
+		return
+
 	}
 
 	// crate list record from list meta record
@@ -71,6 +75,177 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
 
 	fmt.Println(words)
+
+}
+
+func (listService *ListProcessorService) ProcessWordsFromUrl(listMeta model.ListMetaModel) {
+	fmt.Println("Processing form url ", *listMeta.Url)
+	// at first check if its a valid url
+	// next determine which one is it
+	if strings.Contains(*listMeta.Url, "vocabulary.com") {
+		listService.ProcessVocabularyWords(listMeta)
+	}
+	if strings.Contains(*listMeta.Url, "quizlet.com") {
+		listService.ProcessQuizletWords(listMeta)
+	}
+	if strings.Contains(*listMeta.Url, "memrise.com") {
+		listService.ProcessMemriseWords(listMeta)
+	}
+
+}
+
+func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.ListMetaModel) {
+
+	urls, err := scrapper.GetMemriseSets(*listMeta.Url)
+
+	fmt.Println(urls.Urls)
+
+	if err != nil {
+		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+		return
+	}
+
+	for i, url := range urls.Urls {
+		words, err := scrapper.ScrapMemrise(url)
+
+		if err != nil {
+			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+			return
+		}
+
+		fmt.Println(words)
+		fmt.Println(err)
+
+		if len(words) == 0 {
+			utils.PrintR("ProcessMemriseWords No word found ")
+			return
+		}
+
+		// list title
+		title := fmt.Sprintf("%s-Group-%d", urls.Title, i+1)
+
+		// crate list record from list meta record
+		listId, err := listService.CreateListRecordFromListMeta(listMeta, title)
+
+		if err != nil {
+			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+			return
+		}
+
+		// now follow the steps
+		listService.ProcessWordsOfSingleGroup(words, listId)
+
+	}
+
+	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+
+}
+
+func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.ListMetaModel) {
+
+	// check if it is a folder
+	if strings.Contains(*listMeta.Url, "folders") && strings.Contains(*listMeta.Url, "sets") {
+		urls, err := scrapper.GetQuizletUrlMaps(*listMeta.Url)
+
+		if err != nil {
+			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+			return
+		}
+
+		for _, set := range urls {
+			words, title, err := scrapper.ScrapQuizlet(set.Url)
+
+			if err != nil {
+				UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+				return
+			}
+
+			fmt.Println(words)
+			fmt.Println(title)
+			fmt.Println(err)
+
+			if len(words) == 0 {
+				utils.PrintR("ProcessQuizletWords No word found ")
+				return
+			}
+
+			// crate list record from list meta record
+			listId, err := listService.CreateListRecordFromListMeta(listMeta, title)
+
+			if err != nil {
+				UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+				return
+			}
+
+			// now follow the steps
+			listService.ProcessWordsOfSingleGroup(words, listId)
+
+		}
+
+	} else {
+
+		words, title, err := scrapper.ScrapQuizlet(*listMeta.Url)
+
+		if err != nil {
+			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+			return
+		}
+
+		fmt.Println(words)
+		fmt.Println(title)
+		fmt.Println(err)
+
+		if len(words) == 0 {
+			utils.PrintR("ProcessQuizletWords No word found ")
+			return
+		}
+
+		// crate list record from list meta record
+		listId, err := listService.CreateListRecordFromListMeta(listMeta, title)
+
+		if err != nil {
+			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+			return
+		}
+
+		// now follow the steps
+		listService.ProcessWordsOfSingleGroup(words, listId)
+
+	}
+
+	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+
+}
+
+func (listService *ListProcessorService) ProcessVocabularyWords(listMeta model.ListMetaModel) {
+	words, title, err := scrapper.ScrapVocabulary(*listMeta.Url)
+
+	if err != nil {
+		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+		return
+	}
+
+	fmt.Println(words)
+	fmt.Println(title)
+	fmt.Println(err)
+
+	if len(words) == 0 {
+		utils.PrintR("ProcessVocabularyWords No word found ")
+		return
+	}
+
+	// crate list record from list meta record
+	listId, err := listService.CreateListRecordFromListMeta(listMeta, title)
+
+	if err != nil {
+		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		return
+	}
+
+	// now follow the steps
+	listService.ProcessWordsOfSingleGroup(words, listId)
+
+	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
 
 }
 
