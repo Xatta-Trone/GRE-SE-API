@@ -17,7 +17,8 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 
 	// list controller
 	listRepo := repository.NewListRepository(database.Gdb)
-	listController := publicController.NewListsController(listRepo)
+	listService := services.NewListProcessorService(database.Gdb)
+	listController := publicController.NewListsController(listRepo,listService)
 
 	public := r.Group("/")
 

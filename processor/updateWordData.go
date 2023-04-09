@@ -13,7 +13,9 @@ import (
 	"github.com/xatta-trone/words-combinator/utils"
 )
 
-func ProcessSingleWordData(db *sqlx.DB, word model.WordModel) {
+func ProcessSingleWordData(db *sqlx.DB, word model.WordModel) []model.Combined {
+
+	var result []model.Combined
 
 	// check if the there is data in the wordlist table
 	data, err := CheckWordListTable(db, word)
@@ -27,28 +29,30 @@ func ProcessSingleWordData(db *sqlx.DB, word model.WordModel) {
 		if err != nil {
 			fmt.Println(err.(*errors.Error).ErrorStack())
 			fmt.Println(err)
-			return
+			return result
 		}
 		// then process the data
 		scrapper.ScrapWordById(db, wordListModel)
 		// then process this result again
-		ProcessSingleWordData(db, word)
+		return ProcessSingleWordData(db, word)
 
 	}
 
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
 		fmt.Println(err)
-		return
+		return result
 	}
 
 	if data.ID != 0 {
 		// if yes process the data
 		processedData, _ := ProcessWordData(db, data)
-		// save to the database
-		SaveProcessedDataToWordTable(db, word, processedData)
+
+		result = append(result, processedData...)
 
 	}
+
+	return result
 
 }
 
@@ -90,7 +94,7 @@ func CheckWordListTable(db *sqlx.DB, word model.WordModel) (model.Result, error)
 	err := result.StructScan(&model)
 
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		// fmt.Println(err.(*errors.Error).ErrorStack())
 		fmt.Println(err)
 		return model, err
 	}
@@ -104,7 +108,7 @@ func ProcessWordData(db *sqlx.DB, wordlist model.Result) ([]model.Combined, erro
 	finalResult := []model.Combined{}
 
 	// check if main word exists
-	if  wordlist.Google.MainWord == "" {
+	if wordlist.Google.MainWord == "" {
 		// update the database to review manually
 		UpdateNeedAttentionFlag(db, wordlist)
 		return finalResult, errors.New("main word is empty")
@@ -180,82 +184,77 @@ func ProcessWordData(db *sqlx.DB, wordlist model.Result) ([]model.Combined, erro
 	// fmt.Println("wiki")
 	// fmt.Println(wordlist.Wiki)
 
+	for _, wikiPos := range wordlist.Wiki.PartsOfSpeeches {
+		if len(wikiPos.Synonyms) > 0 {
+			// get the parts of speech
+			pos := utils.GetPos(wikiPos.PartsOfSpeech)
+			// get the index of this parts of speech form the final result data
+			posIndex := getPartsOfSpeechIndex(finalResult, pos)
 
-		for _, wikiPos := range wordlist.Wiki.PartsOfSpeeches {
-			if len(wikiPos.Synonyms) > 0 {
-				// get the parts of speech
-				pos := utils.GetPos(wikiPos.PartsOfSpeech)
-				// get the index of this parts of speech form the final result data
-				posIndex := getPartsOfSpeechIndex(finalResult, pos)
+			if posIndex != -1 {
+				// parts of speech found in the final result
+				for _, synonym := range wikiPos.Synonyms {
+					check := checkForSynonymWord(db, synonym)
+					// fmt.Printf("checking for %s in wiki : %t\n", synonym, check)
 
-				if posIndex != -1 {
-					// parts of speech found in the final result
-					for _, synonym := range wikiPos.Synonyms {
-						check := checkForSynonymWord(db, synonym)
-						// fmt.Printf("checking for %s in wiki : %t\n", synonym, check)
-
-						if check {
-							// add to gre list
-							if checkExists := checkUnique(finalResult[posIndex].SynonymsG, synonym); !checkExists {
-								finalResult[posIndex].SynonymsG = append(finalResult[posIndex].SynonymsG, synonym)
-							}
-						} else {
-							// add to normal list
-							if checkExists := checkUnique(finalResult[posIndex].SynonymsN, synonym); !checkExists {
-								finalResult[posIndex].SynonymsN = append(finalResult[posIndex].SynonymsN, synonym)
-							}
+					if check {
+						// add to gre list
+						if checkExists := checkUnique(finalResult[posIndex].SynonymsG, synonym); !checkExists {
+							finalResult[posIndex].SynonymsG = append(finalResult[posIndex].SynonymsG, synonym)
 						}
-
+					} else {
+						// add to normal list
+						if checkExists := checkUnique(finalResult[posIndex].SynonymsN, synonym); !checkExists {
+							finalResult[posIndex].SynonymsN = append(finalResult[posIndex].SynonymsN, synonym)
+						}
 					}
+
 				}
-
 			}
-		}
 
-	
+		}
+	}
 
 	// fmt.Println("words api")
 	// fmt.Println(wordlist.WordsApi)
 	// 3.process words api result
 
-		for _, wAPos := range wordlist.WordsApi.Results {
-			if len(wAPos.Synonyms) > 0 {
-				// get the parts of speech
-				pos := utils.GetPos(wAPos.PartOfSpeech)
-				// get the index of this parts of speech form the final result data
-				posIndex := getPartsOfSpeechIndex(finalResult, pos)
+	for _, wAPos := range wordlist.WordsApi.Results {
+		if len(wAPos.Synonyms) > 0 {
+			// get the parts of speech
+			pos := utils.GetPos(wAPos.PartOfSpeech)
+			// get the index of this parts of speech form the final result data
+			posIndex := getPartsOfSpeechIndex(finalResult, pos)
 
-				if posIndex != -1 {
-					// parts of speech found in the final result
-					for _, synonym := range wAPos.Synonyms {
-						check := checkForSynonymWord(db, synonym)
-						// fmt.Printf("checking for %s in words api : %t\n", synonym, check)
+			if posIndex != -1 {
+				// parts of speech found in the final result
+				for _, synonym := range wAPos.Synonyms {
+					check := checkForSynonymWord(db, synonym)
+					// fmt.Printf("checking for %s in words api : %t\n", synonym, check)
 
-						if check {
-							// add to gre list
-							if checkExists := checkUnique(finalResult[posIndex].SynonymsG, synonym); !checkExists {
-								finalResult[posIndex].SynonymsG = append(finalResult[posIndex].SynonymsG, synonym)
-							}
-						} else {
-							// add to normal list
-							if checkExists := checkUnique(finalResult[posIndex].SynonymsN, synonym); !checkExists {
-								finalResult[posIndex].SynonymsN = append(finalResult[posIndex].SynonymsN, synonym)
-							}
+					if check {
+						// add to gre list
+						if checkExists := checkUnique(finalResult[posIndex].SynonymsG, synonym); !checkExists {
+							finalResult[posIndex].SynonymsG = append(finalResult[posIndex].SynonymsG, synonym)
 						}
-
+					} else {
+						// add to normal list
+						if checkExists := checkUnique(finalResult[posIndex].SynonymsN, synonym); !checkExists {
+							finalResult[posIndex].SynonymsN = append(finalResult[posIndex].SynonymsN, synonym)
+						}
 					}
-				}
 
+				}
 			}
 
 		}
 
-	
+	}
 
 	// 4. process thesaurus data
 	// fmt.Println("thesaurus api")
 	// fmt.Println(wordlist.Thesaurus)
-	if  len(wordlist.Thesaurus.Data.Synonyms) > 0 {
+	if len(wordlist.Thesaurus.Data.Synonyms) > 0 {
 		for _, tPos := range wordlist.Thesaurus.Data.Synonyms {
 			// get the parts of speech
 			pos := utils.GetPos(tPos.PartsOfSpeech)
@@ -290,7 +289,7 @@ func ProcessWordData(db *sqlx.DB, wordlist model.Result) ([]model.Combined, erro
 	// 5.0 process the MW data
 	// fmt.Println("MW api")
 	// fmt.Println(wordlist.Mw)
-	if  len(wordlist.Mw.Data.PartsOfSpeeches) > 0 {
+	if len(wordlist.Mw.Data.PartsOfSpeeches) > 0 {
 		for _, tPos := range wordlist.Mw.Data.PartsOfSpeeches {
 			// get the parts of speech
 			pos := utils.GetPos(tPos.PartsOfSpeech)
@@ -378,7 +377,7 @@ func SaveProcessedDataToWordTable(db *sqlx.DB, word model.WordModel, wordData []
 	}
 	// insert the word into the words table
 	wodDataModel := model.WordDataModel{
-		Word: word.Word,
+		Word:            word.Word,
 		PartsOfSpeeches: wordData,
 	}
 	data, err := json.Marshal(wodDataModel)

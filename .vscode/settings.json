@@ -6,6 +6,7 @@
         "godotenv",
         "gonic",
         "gookit",
+        "gosimple",
         "imroc",
         "jmoiron",
         "joho",
@@ -20,5 +21,7 @@
         "sqlx",
         "wordlist",
         "wordsapiv"
-    ]
+    ],
+    "files.autoSave": "afterDelay",
+   "go.autocompleteUnimportedPackages": true,
 }

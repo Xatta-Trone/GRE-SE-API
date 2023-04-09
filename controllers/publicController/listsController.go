@@ -7,15 +7,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/requests"
+	"github.com/xatta-trone/words-combinator/services"
 )
 
 type ListsController struct {
-	repository repository.ListRepositoryInterface
+	repository  repository.ListRepositoryInterface
+	listService services.ListProcessorServiceInterface
 }
 
-func NewListsController(repository repository.ListRepositoryInterface) *ListsController {
+func NewListsController(repository repository.ListRepositoryInterface, listService services.ListProcessorServiceInterface) *ListsController {
 	return &ListsController{
-		repository: repository,
+		repository:  repository,
+		listService: listService,
 	}
 }
 
@@ -61,6 +64,9 @@ func (ctl *ListsController) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
 	}
+
+	// now process the record
+	go ctl.listService.ProcessListMetaRecord(listMeta)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"data":    listMeta,

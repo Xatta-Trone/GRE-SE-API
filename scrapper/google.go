@@ -18,6 +18,7 @@ import (
 
 // GetGoogleResultAndSave goes to google and retrieves the google result and saves to db
 func GetGoogleResultAndSave(db *sqlx.DB, word model.Result) {
+	time.Sleep(500 * time.Millisecond)
 
 	utils.PrintS(fmt.Sprintf("Getting %v - %s from google \n", word.ID, word.Word))
 

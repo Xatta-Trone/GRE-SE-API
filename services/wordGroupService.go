@@ -8,13 +8,13 @@ import (
 	"os"
 	"strings"
 
+	errs "github.com/go-errors/errors"
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/database"
 	"github.com/xatta-trone/words-combinator/enums"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/processor"
 	"github.com/xatta-trone/words-combinator/utils"
-	errs "github.com/go-errors/errors"
 )
 
 type WordGroupService struct {
@@ -127,7 +127,10 @@ func (wgService *WordGroupService) ProcessNewWords(newWords []model.WordModel, g
 
 	for _, word := range newWords {
 		// processor.ReadTableAndProcessWord(word.Word)
-		processor.ProcessSingleWordData(wgService.db, word)
+		processedWordData := processor.ProcessSingleWordData(wgService.db, word)
+
+		// save to the database
+		processor.SaveProcessedDataToWordTable(wgService.db, word, processedWordData)
 	}
 
 	// update the word groups id status to complete
