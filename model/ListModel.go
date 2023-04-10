@@ -6,7 +6,6 @@ type ListModel struct {
 	Id         uint64    `json:"id"`
 	UserId     uint64    `json:"user_id" db:"user_id"`
 	ListMetaId *uint64    `json:"list_meta_id" db:"list_meta_id"`
-	FolderId   *uint64    `json:"folder_id" db:"folder_id"`
 	Name       string    `json:"name"`
 	Slug       string    `json:"slug"`
 	Visibility int       `json:"visibility"`

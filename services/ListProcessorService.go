@@ -498,9 +498,10 @@ func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta m
 		ListIdToInsert = listMeta.Id
 	}
 
-	queryMap := map[string]interface{}{"name": title, "slug": slug, "list_meta_id": ListIdToInsert, "folder_id": folderIdToInsert, "visibility": listMeta.Visibility, "user_id": listMeta.UserId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
+	queryMap := map[string]interface{}{"name": title, "slug": slug, "list_meta_id": ListIdToInsert, "visibility": listMeta.Visibility, "user_id": listMeta.UserId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
 
-	res, err := listService.db.NamedExec("Insert into lists(name,slug,list_meta_id,folder_id,visibility,user_id,created_at,updated_at) values(:name,:slug,NullIf(:list_meta_id,0),NullIf(:folder_id,0),:visibility,:user_id,:created_at,:updated_at)", queryMap)
+	// create the lists record
+	res, err := listService.db.NamedExec("Insert into lists(name,slug,list_meta_id,visibility,user_id,created_at,updated_at) values(:name,:slug,NullIf(:list_meta_id,0),:visibility,:user_id,:created_at,:updated_at)", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)
@@ -516,6 +517,18 @@ func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta m
 
 	if lastId == 0 {
 		return -1, fmt.Errorf("there was a problem with the insertion. last id: %d", lastId)
+	}
+
+	if folderIdToInsert != 0 {
+		// create the folder list relation
+		queryMapForListFolderRelation := map[string]interface{}{"list_id": lastId, "folder_id": folderIdToInsert}
+		_, err = listService.db.NamedExec("Insert into folder_list_relation(folder_id,list_id) values(:folder_id,:list_id)", queryMapForListFolderRelation)
+		if err != nil {
+			utils.Errorf(err)
+			utils.PrintR("there was an error creating list folder relation \n")
+
+		}
+
 	}
 
 	return lastId, nil
