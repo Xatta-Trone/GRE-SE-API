@@ -62,7 +62,7 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 	}
 
 	// crate list record from list meta record
-	listId, err := listService.CreateListRecordFromListMeta(listMeta, listMeta.Name)
+	listId, err := listService.CreateListRecordFromListMeta(listMeta, listMeta.Name, 0)
 
 	if err != nil {
 		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
@@ -75,6 +75,7 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
 
 	fmt.Println(words)
+	utils.PrintG("Processing complete")
 
 }
 
@@ -96,19 +97,31 @@ func (listService *ListProcessorService) ProcessWordsFromUrl(listMeta model.List
 
 func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.ListMetaModel) {
 
-	urls, err := scrapper.GetMemriseSets(*listMeta.Url)
+	memriseSet, err := scrapper.GetMemriseSets(*listMeta.Url)
 
-	fmt.Println(urls.Urls)
+	fmt.Println(memriseSet.Urls)
 
 	if err != nil {
+		utils.Errorf(err)
 		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
 		return
 	}
 
-	for i, url := range urls.Urls {
+	// create the folder
+	// crate folder record from list meta record
+	folderId, err := listService.CreateFolderFromListMeta(listMeta, memriseSet.Title)
+
+	if err != nil {
+		utils.Errorf(err)
+		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		return
+	}
+
+	for i, url := range memriseSet.Urls {
 		words, err := scrapper.ScrapMemrise(url)
 
 		if err != nil {
+			utils.Errorf(err)
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
 			return
 		}
@@ -122,12 +135,12 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 		}
 
 		// list title
-		title := fmt.Sprintf("%s-Group-%d", urls.Title, i+1)
-
+		title := fmt.Sprintf("%s-Group-%d", memriseSet.Title, i+1)
 		// crate list record from list meta record
-		listId, err := listService.CreateListRecordFromListMeta(listMeta, title)
+		listId, err := listService.CreateListRecordFromListMeta(listMeta, title, uint64(folderId))
 
 		if err != nil {
+			utils.Errorf(err)
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
 			return
 		}
@@ -138,6 +151,7 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 	}
 
 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+	utils.PrintG("Processing complete")
 
 }
 
@@ -145,10 +159,20 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 
 	// check if it is a folder
 	if strings.Contains(*listMeta.Url, "folders") && strings.Contains(*listMeta.Url, "sets") {
-		urls, err := scrapper.GetQuizletUrlMaps(*listMeta.Url)
+		urls, setTitle, err := scrapper.GetQuizletUrlMaps(*listMeta.Url)
 
 		if err != nil {
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+			return
+		}
+
+		// create the folder
+		// crate folder record from list meta record
+		folderId, err := listService.CreateFolderFromListMeta(listMeta, setTitle)
+
+		if err != nil {
+			utils.Errorf(err)
+			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
 			return
 		}
 
@@ -170,7 +194,7 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 			}
 
 			// crate list record from list meta record
-			listId, err := listService.CreateListRecordFromListMeta(listMeta, title)
+			listId, err := listService.CreateListRecordFromListMeta(listMeta, title, uint64(folderId))
 
 			if err != nil {
 				UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
@@ -201,7 +225,7 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 		}
 
 		// crate list record from list meta record
-		listId, err := listService.CreateListRecordFromListMeta(listMeta, title)
+		listId, err := listService.CreateListRecordFromListMeta(listMeta, title, 0)
 
 		if err != nil {
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
@@ -214,6 +238,7 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 	}
 
 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+	utils.PrintG("Processing complete")
 
 }
 
@@ -235,7 +260,7 @@ func (listService *ListProcessorService) ProcessVocabularyWords(listMeta model.L
 	}
 
 	// crate list record from list meta record
-	listId, err := listService.CreateListRecordFromListMeta(listMeta, title)
+	listId, err := listService.CreateListRecordFromListMeta(listMeta, title, 0)
 
 	if err != nil {
 		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
@@ -246,6 +271,7 @@ func (listService *ListProcessorService) ProcessVocabularyWords(listMeta model.L
 	listService.ProcessWordsOfSingleGroup(words, listId)
 
 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+	utils.PrintG("Processing complete")
 
 }
 
@@ -459,13 +485,22 @@ func (listService *ListProcessorService) GenerateUniqueListSlug(title string) st
 }
 
 // here the title is different because it could be parsed from the other sources like quizlet or so...
-func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta model.ListMetaModel, title string) (int64, error) {
+func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta model.ListMetaModel, title string, folderId uint64) (int64, error) {
 
 	slug := listService.GenerateUniqueListSlug(title)
 
-	queryMap := map[string]interface{}{"name": title, "slug": slug, "list_meta_id": listMeta.Id, "visibility": listMeta.Visibility, "user_id": listMeta.UserId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
+	var folderIdToInsert uint64
+	var ListIdToInsert uint64
 
-	res, err := listService.db.NamedExec("Insert into lists(name,slug,list_meta_id,visibility,user_id,created_at,updated_at) values(:name,:slug,:list_meta_id,:visibility,:user_id,:created_at,:updated_at)", queryMap)
+	if folderId != 0 {
+		folderIdToInsert = folderId
+	} else {
+		ListIdToInsert = listMeta.Id
+	}
+
+	queryMap := map[string]interface{}{"name": title, "slug": slug, "list_meta_id": ListIdToInsert, "folder_id": folderIdToInsert, "visibility": listMeta.Visibility, "user_id": listMeta.UserId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
+
+	res, err := listService.db.NamedExec("Insert into lists(name,slug,list_meta_id,folder_id,visibility,user_id,created_at,updated_at) values(:name,:slug,NullIf(:list_meta_id,0),NullIf(:folder_id,0),:visibility,:user_id,:created_at,:updated_at)", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)
@@ -485,4 +520,68 @@ func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta m
 
 	return lastId, nil
 
+}
+
+func NewNullString(s string) sql.NullString {
+	if len(s) == 0 {
+		return sql.NullString{}
+	}
+	return sql.NullString{
+		String: s,
+		Valid:  true,
+	}
+}
+
+// CreateFolderFromListMeta makes a folder from the given list meta model.
+// this is used for quizlet and memrise
+func (listService *ListProcessorService) CreateFolderFromListMeta(listMeta model.ListMetaModel, title string) (int64, error) {
+
+	slug := listService.GenerateUniqueFolderSlug(title)
+
+	queryMap := map[string]interface{}{"name": title, "slug": slug, "list_meta_id": listMeta.Id, "visibility": listMeta.Visibility, "user_id": listMeta.UserId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
+
+	res, err := listService.db.NamedExec("Insert into folders(name,slug,list_meta_id,visibility,user_id,created_at,updated_at) values(:name,:slug,:list_meta_id,:visibility,:user_id,:created_at,:updated_at)", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return -1, err
+	}
+
+	lastId, err := res.LastInsertId()
+
+	if err != nil {
+		utils.Errorf(err)
+		return -1, err
+	}
+
+	if lastId == 0 {
+		return -1, fmt.Errorf("there was a problem with the insertion. last id: %d", lastId)
+	}
+
+	return lastId, nil
+
+}
+
+func (listService *ListProcessorService) GenerateUniqueFolderSlug(title string) string {
+
+	slug := slug.Make(title)
+	// now check the slug
+
+	row := listService.db.QueryRow("SELECT Count(id) FROM folders WHERE slug like ?", fmt.Sprintf("%%%s-%%", slug))
+	var totalCount int
+	err := row.Scan(&totalCount)
+
+	// fmt.Println(slug, fmt.Sprintf("%s-%%", slug), totalCount)
+
+	if err != nil {
+		// just add the timestamp and return
+		return fmt.Sprintf("%s-%d", slug, time.Now().UnixMilli())
+	}
+
+	if totalCount > 0 {
+		return fmt.Sprintf("%s-%d", slug, totalCount+1)
+
+	}
+
+	return fmt.Sprintf("%s-%d", slug, 0)
 }

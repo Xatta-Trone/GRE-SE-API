@@ -81,8 +81,9 @@ func ScrapQuizlet(url string) ([]string, string, error) {
 	return words, fileName, err
 }
 
-func GetQuizletUrlMaps(url string) ([]model.QuizletFolder, error) {
+func GetQuizletUrlMaps(url string) ([]model.QuizletFolder,string, error) {
 	indexes := []model.QuizletFolder{}
+	var title string
 	var err error = nil
 	geziyor.NewGeziyor(&geziyor.Options{
 		StartRequestsFunc: func(g *geziyor.Geziyor) {
@@ -94,6 +95,11 @@ func GetQuizletUrlMaps(url string) ([]model.QuizletFolder, error) {
 			if r.StatusCode != http.StatusOK {
 				err = errors.New(r.Status)
 			}
+
+			// get the title 
+			title = r.HTMLDoc.Find(".DashboardHeaderTitle-main").Text()
+
+			fmt.Println(title)
 
 			root := r.HTMLDoc.Find(".FolderPageSetsList-setsFeed")
 
@@ -122,5 +128,5 @@ func GetQuizletUrlMaps(url string) ([]model.QuizletFolder, error) {
 		},
 	}).Start()
 
-	return indexes, err
+	return indexes,title, err
 }
