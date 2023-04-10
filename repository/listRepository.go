@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
+	"github.com/xatta-trone/words-combinator/utils"
 )
 
 type ListRepositoryInterface interface {
@@ -30,14 +31,14 @@ func (rep *ListRepository) Create(req *requests.ListsCreateRequestStruct) (model
 	res, err := rep.Db.NamedExec("Insert into list_meta(name,url,words,visibility,user_id,created_at,updated_at) values(:name,:url,:words,:visibility,:user_id,created_at,:updated_at)", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
 	lastId, err := res.LastInsertId()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
@@ -48,7 +49,7 @@ func (rep *ListRepository) Create(req *requests.ListsCreateRequestStruct) (model
 	newRecord, err = rep.FindOne(int(lastId))
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
@@ -70,13 +71,13 @@ func (rep *ListRepository) FindOne(id int) (model.ListMetaModel, error) {
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return modelx, err
 	}
 	err = nstmt.Get(&modelx, queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return modelx, err
 	}
 

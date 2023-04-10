@@ -84,7 +84,7 @@ func (wgService *WordGroupService) ProcessWordGroupData(wg model.WordGroupModel)
 		wordId, err := wgService.InsertIntoWordsTable(word)
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 			return
 		}
 
@@ -121,7 +121,7 @@ func (wgService *WordGroupService) ProcessNewWords(newWords []model.WordModel, g
 	// update the word groups id status to processing
 	_, err := wgService.db.Exec(query_group, enums.WordGroupProcessing, groupId)
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
@@ -136,7 +136,7 @@ func (wgService *WordGroupService) ProcessNewWords(newWords []model.WordModel, g
 	// update the word groups id status to complete
 	_, err = database.Gdb.Exec(query_group, enums.WordGroupComplete, groupId)
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
@@ -154,7 +154,7 @@ func (wgService *WordGroupService) InsertNewWordsToWordsGroupTable(newWords []st
 
 	res, err := wgService.db.Exec(query_group, wordsToInsert, groupId)
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
@@ -185,7 +185,7 @@ func (wgService *WordGroupService) InsertGroupRelation(words []string, groupId i
 	err = wgService.db.Select(&wordMap, query, param...)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 
@@ -206,7 +206,7 @@ func (wgService *WordGroupService) InsertGroupRelation(words []string, groupId i
 	query_group := `INSERT INTO word_group_relation(word_id,word_group_id,created_at) VALUES (:word_id,:word_group_id,now())`
 	res, err := wgService.db.NamedExec(query_group, wordGroupRelations)
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		fmt.Println(err.(*errs.Error).ErrorStack())
 	}
 

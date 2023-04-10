@@ -46,7 +46,7 @@ func GetNinjaResult(wg *sync.WaitGroup) {
 			_, err := database.Gdb.Exec("Update wordlist set ninja=?,is_parsed_ninja=1 where id = ? ", res.String(), word.ID)
 
 			if err != nil {
-				fmt.Println(err)
+				utils.Errorf(err)
 				continue
 			}
 
@@ -56,7 +56,7 @@ func GetNinjaResult(wg *sync.WaitGroup) {
 
 		if res.StatusCode == http.StatusNotFound {
 			_, err := database.Gdb.Exec("Update wordlist set ninja_try= ninja_try+1 where id = ? ", word.ID)
-			fmt.Println(err)
+			utils.Errorf(err)
 
 		}
 

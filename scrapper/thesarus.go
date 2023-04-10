@@ -34,7 +34,7 @@ func GetThesaurusResultAndSave(db *sqlx.DB, word model.Result) {
 	res, err := http.Get(fmt.Sprintf("%s/%s", url, word.Word))
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return
 	}
 
@@ -46,7 +46,7 @@ func GetThesaurusResultAndSave(db *sqlx.DB, word model.Result) {
 		_, err := db.Exec("Update wordlist set thesaurus=?,is_parsed_th=1,updated_at=now() where id = ? ", string(body), word.ID)
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 			return
 		}
 
@@ -58,7 +58,7 @@ func GetThesaurusResultAndSave(db *sqlx.DB, word model.Result) {
 		_, err := db.Exec("Update wordlist set th_try= th_try+1,updated_at=now() where id = ? ", word.ID)
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 		}
 		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from thesaurus \n", word.ID, word.Word))
 
@@ -90,7 +90,7 @@ func GetThesaurusResult(wg *sync.WaitGroup) {
 		res, err := http.Get(fmt.Sprintf("http://localhost:8081/w/%s", word.Word))
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 		}
 
 		defer res.Body.Close()
@@ -105,7 +105,7 @@ func GetThesaurusResult(wg *sync.WaitGroup) {
 			_, err := database.Gdb.Exec("Update wordlist set thesaurus=?,is_parsed_th=1 where id = ? ", string(body), word.ID)
 
 			if err != nil {
-				fmt.Println(err)
+				utils.Errorf(err)
 			}
 
 			utils.PrintG(fmt.Sprintf("Inserted %v - %s from thesaurus \n", word.ID, word.Word))
@@ -115,7 +115,7 @@ func GetThesaurusResult(wg *sync.WaitGroup) {
 			_, err := database.Gdb.Exec("Update wordlist set th_try= th_try+1 where id = ? ", word.ID)
 
 			if err != nil {
-				fmt.Println(err)
+				utils.Errorf(err)
 			}
 
 		}

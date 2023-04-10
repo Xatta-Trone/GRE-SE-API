@@ -9,6 +9,7 @@ import (
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/services"
+	"github.com/xatta-trone/words-combinator/utils"
 )
 
 type UserRepositoryInterface interface {
@@ -43,13 +44,13 @@ func (rep *UserRepository) Index(r requests.UsersIndexReqStruct) ([]model.UserMo
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return models, err
 	}
 	err = nstmt.Select(&models, queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return models, err
 	}
 
@@ -68,13 +69,13 @@ func (rep *UserRepository) FindOne(id int) (model.UserModel, error) {
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return modelx, err
 	}
 	err = nstmt.Get(&modelx, queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return modelx, err
 	}
 
@@ -93,13 +94,13 @@ func (rep *UserRepository) FindOneByEmail(email string) (model.UserModel, error)
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return modelx, err
 	}
 	err = nstmt.Get(&modelx, queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return modelx, err
 	}
 
@@ -118,13 +119,13 @@ func (rep *UserRepository) FindOneByUserName(username string) (model.UserModel, 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return modelx, err
 	}
 	err = nstmt.Get(&modelx, queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return modelx, err
 	}
 
@@ -141,14 +142,14 @@ func (rep *UserRepository) Delete(id int) (bool, error) {
 	res, err := rep.Db.NamedExec(query, queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
 	rows, err := res.RowsAffected()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
@@ -175,14 +176,14 @@ func (rep *UserRepository) Create(req *requests.UsersCreateRequestStruct) (model
 	res, err := rep.Db.NamedExec("Insert into  users(name,email,username, created_at,updated_at) values(:name,:email,:username,:created_at,:updated_at)", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
 	lastId, err := res.LastInsertId()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
@@ -193,7 +194,7 @@ func (rep *UserRepository) Create(req *requests.UsersCreateRequestStruct) (model
 	newRecord, err = rep.FindOne(int(lastId))
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
@@ -208,14 +209,14 @@ func (rep *UserRepository) Update(id int, req *requests.UsersUpdateRequestStruct
 	res, err := rep.Db.NamedExec("Update users set name=:name,email=:email,username=:username,updated_at=:updated_at where id=:id", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
 	rows, err := res.RowsAffected()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
@@ -238,14 +239,14 @@ func (rep *UserRepository) UpdateUserName(id uint64, username string) (bool, err
 	res, err := rep.Db.NamedExec("Update users set username=:username,updated_at=:updated_at where id=:id", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
 	rows, err := res.RowsAffected()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 

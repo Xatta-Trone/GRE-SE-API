@@ -35,7 +35,7 @@ func GetGoogleResultAndSave(db *sqlx.DB, word model.Result) {
 	res, err := http.Get(fmt.Sprintf("%s/word/%s", googleUrl, word.Word))
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return
 	}
 
@@ -47,7 +47,7 @@ func GetGoogleResultAndSave(db *sqlx.DB, word model.Result) {
 		_, err := db.Exec("Update wordlist set google=?,is_google_parsed=1,updated_at=now() where id = ? ", string(body), word.ID)
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 			return
 		}
 
@@ -59,7 +59,7 @@ func GetGoogleResultAndSave(db *sqlx.DB, word model.Result) {
 		_, err := db.Exec("Update wordlist set google_try= google_try+1,updated_at=now() where id = ? ", word.ID)
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 		}
 		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from google \n", word.ID, word.Word))
 
@@ -91,7 +91,7 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 		res, err := http.Get(fmt.Sprintf("http://localhost:8080/word/%s", word.Word))
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 		}
 
 		defer res.Body.Close()
@@ -106,7 +106,7 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 			_, err := database.Gdb.Exec("Update wordlist set google=?,is_google_parsed=1 where id = ? ", string(body), word.ID)
 
 			if err != nil {
-				fmt.Println(err)
+				utils.Errorf(err)
 			}
 
 			// fmt.Printf("Inserted %v - %s from google \n", word.ID, word.Word)
@@ -118,7 +118,7 @@ func GetGoogleResult(wg *sync.WaitGroup) {
 			_, err := database.Gdb.Exec("Update wordlist set google_try= google_try+1 where id = ? ", word.ID)
 
 			if err != nil {
-				fmt.Println(err)
+				utils.Errorf(err)
 			}
 
 		}

@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
+	"github.com/xatta-trone/words-combinator/utils"
 )
 
 // repository
@@ -42,7 +43,7 @@ func (rep *WordRepository) FindAll(r requests.WordIndexReqStruct) ([]model.WordM
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return words, err
 	}
 	err = nstmt.Select(&words, queryMap)
@@ -50,7 +51,7 @@ func (rep *WordRepository) FindAll(r requests.WordIndexReqStruct) ([]model.WordM
 	// err := rep.Db.Select(&words, query, "%"+r.Query+"%", r.PerPage)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return words, err
 	}
 
@@ -69,13 +70,13 @@ func (rep *WordRepository) FindOne(id int) (model.WordModel, error) {
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return word, err
 	}
 	err = nstmt.Get(&word, queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return word, err
 	}
 
@@ -90,14 +91,14 @@ func (rep *WordRepository) DeleteOne(id int) (bool, error) {
 	res, err := rep.Db.Exec(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
 	rows, err := res.RowsAffected()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
@@ -120,7 +121,7 @@ func (rep *WordRepository) UpdateById(id int, wordData model.WordDataModel, isRe
 	data, err := json.Marshal(wordData)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
@@ -129,14 +130,14 @@ func (rep *WordRepository) UpdateById(id int, wordData model.WordDataModel, isRe
 	res, err := rep.Db.NamedExec("Update words set word_data=:word_data,is_reviewed=:is_reviewed, updated_at=now() where id=:id", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
 	rows, err := res.RowsAffected()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
@@ -161,7 +162,7 @@ func (rep *WordRepository) Create(word string, wordData model.WordDataModel, isR
 	data, err := json.Marshal(wordData)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
@@ -170,14 +171,14 @@ func (rep *WordRepository) Create(word string, wordData model.WordDataModel, isR
 	res, err := rep.Db.NamedExec("Insert into words(word,word_data,is_reviewed,created_at,updated_at) values(:word,:word_data,:is_reviewed,now(),now())", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
 	lastId, err := res.LastInsertId()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
@@ -188,7 +189,7 @@ func (rep *WordRepository) Create(word string, wordData model.WordDataModel, isR
 	newRecord, err = rep.FindOne(int(lastId))
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 

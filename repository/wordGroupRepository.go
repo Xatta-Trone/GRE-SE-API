@@ -9,6 +9,7 @@ import (
 	"github.com/xatta-trone/words-combinator/enums"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
+	"github.com/xatta-trone/words-combinator/utils"
 )
 
 type WordGroupInterface interface {
@@ -42,7 +43,7 @@ func (rep *WordGroupRepository) FindAll(r requests.WordsGroupIndexRequestStruct)
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return words, err
 	}
 	err = nstmt.Select(&words, queryMap)
@@ -50,7 +51,7 @@ func (rep *WordGroupRepository) FindAll(r requests.WordsGroupIndexRequestStruct)
 	// err := rep.Db.Select(&words, query, "%"+r.Query+"%", r.PerPage)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return words, err
 	}
 
@@ -69,14 +70,14 @@ func (rep *WordGroupRepository) Create(req *requests.WordGroupCreateReqStruct) (
 	res, err := rep.Db.NamedExec("Insert into  word_groups(name,words,status,file_name, created_at,updated_at) values(:name,:words,:status,:file_name,now(),now())", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
 	lastId, err := res.LastInsertId()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
@@ -87,7 +88,7 @@ func (rep *WordGroupRepository) Create(req *requests.WordGroupCreateReqStruct) (
 	newRecord, err = rep.FindOne(int(lastId))
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return newRecord, err
 	}
 
@@ -106,13 +107,13 @@ func (rep *WordGroupRepository) FindOne(id int) (model.WordGroupModel, error) {
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return word, err
 	}
 	err = nstmt.Get(&word, queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return word, err
 	}
 
@@ -142,14 +143,14 @@ func (rep *WordGroupRepository) DeleteOne(id int) (bool, error) {
 	res, err := rep.Db.Exec(query)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 
 	rows, err := res.RowsAffected()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return false, err
 	}
 

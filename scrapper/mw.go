@@ -34,7 +34,7 @@ func GetMWResultAndSave(db *sqlx.DB, word model.Result) {
 	res, err := http.Get(fmt.Sprintf("%s/%s", url, word.Word))
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return
 	}
 
@@ -46,7 +46,7 @@ func GetMWResultAndSave(db *sqlx.DB, word model.Result) {
 		_, err := db.Exec("Update wordlist set mw=?,is_parsed_mw=1,updated_at=now() where id = ? ", string(body), word.ID)
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 			return
 		}
 
@@ -58,7 +58,7 @@ func GetMWResultAndSave(db *sqlx.DB, word model.Result) {
 		_, err := db.Exec("Update wordlist set mw_try= mw_try+1,updated_at=now() where id = ? ", word.ID)
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 		}
 		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from MW \n", word.ID, word.Word))
 
@@ -84,7 +84,7 @@ func GetMWResult(wg *sync.WaitGroup) {
 	err := database.Gdb.Select(&words, "SELECT id, word from wordlist where is_parsed_mw=0 and mw_try < 6")
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 
 	fmt.Println(len(words))
@@ -97,7 +97,7 @@ func GetMWResult(wg *sync.WaitGroup) {
 		res, err := http.Get(fmt.Sprintf("https://thesaurus.gre-sentence-equivalence.com/mw/%s", word.Word))
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 		}
 
 		defer res.Body.Close()
@@ -114,7 +114,7 @@ func GetMWResult(wg *sync.WaitGroup) {
 			_, err := database.Gdb.Exec("Update wordlist set mw=?,is_parsed_mw=1 where id = ? ", string(body), word.ID)
 
 			if err != nil {
-				fmt.Println(err)
+				utils.Errorf(err)
 			}
 
 			str := fmt.Sprintf("Inserted %v - %s from MW \n", word.ID, word.Word)
@@ -128,7 +128,7 @@ func GetMWResult(wg *sync.WaitGroup) {
 			_, err := database.Gdb.Exec("Update wordlist set mw_try= mw_try+1 where id = ? ", word.ID)
 
 			if err != nil {
-				fmt.Println(err)
+				utils.Errorf(err)
 			}
 
 		}

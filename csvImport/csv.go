@@ -183,13 +183,13 @@ func readRemoteFile() {
 		}
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 		}
 
 		_, err = database.Gdb.Exec("INSERT IGNORE INTO wordlist(word) values (?)", data[0])
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 		}
 
 		totalRows++

@@ -29,7 +29,7 @@ func GetWordsResultAndSave(db *sqlx.DB, word model.Result) {
 				Get(fmt.Sprintf("https://wordsapiv1.p.rapidapi.com/words/%s", word.Word))
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return
 	}
 
@@ -40,7 +40,7 @@ func GetWordsResultAndSave(db *sqlx.DB, word model.Result) {
 		_, err := db.Exec("Update wordlist set words_api=?,is_words_api_parsed=1,updated_at=now() where id = ? ", res.String(), word.ID)
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 			return
 		}
 
@@ -52,7 +52,7 @@ func GetWordsResultAndSave(db *sqlx.DB, word model.Result) {
 		_, err := db.Exec("Update wordlist set words_api_try= words_api_try+1,updated_at=now() where id = ? ", word.ID)
 
 		if err != nil {
-			fmt.Println(err)
+			utils.Errorf(err)
 		}
 		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from words api \n", word.ID, word.Word))
 
@@ -105,7 +105,7 @@ func GetWordsResult(wg *sync.WaitGroup) {
 			_, err := database.Gdb.Exec("Update wordlist set words_api=?,is_words_api_parsed=1 where id = ? ", res.String(), word.ID)
 
 			if err != nil {
-				fmt.Println(err)
+				utils.Errorf(err)
 				continue
 			}
 
@@ -117,7 +117,7 @@ func GetWordsResult(wg *sync.WaitGroup) {
 			_, err := database.Gdb.Exec("Update wordlist set words_api_try= words_api_try+1 where id = ? ", word.ID)
 
 			if err != nil {
-				fmt.Println(err)
+				utils.Errorf(err)
 			}
 
 		} else {

@@ -95,7 +95,7 @@ func buildChatGpt(wordId int64, word string) {
 	_, err = database.Gdb.Exec("Update wordlist set gpt=?,is_parsed_gpt=1 where id = ? ", data, wordId)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 
 	// fmt.Printf("Inserted %v - %s from google \n", word.ID, word.Word)

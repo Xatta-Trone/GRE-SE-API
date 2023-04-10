@@ -28,7 +28,7 @@ func ProcessSingleWordData(db *sqlx.DB, word model.WordModel) []model.Combined {
 		wordListModel, err := InsertIntoWordListTable(db, word.Word)
 		if err != nil {
 			fmt.Println(err.(*errors.Error).ErrorStack())
-			fmt.Println(err)
+			utils.Errorf(err)
 			return result
 		}
 		// then process the data
@@ -40,7 +40,7 @@ func ProcessSingleWordData(db *sqlx.DB, word model.WordModel) []model.Combined {
 
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
-		fmt.Println(err)
+		utils.Errorf(err)
 		return result
 	}
 
@@ -62,7 +62,7 @@ func InsertIntoWordListTable(db *sqlx.DB, word string) (model.Result, error) {
 	_, err := db.Exec("INSERT IGNORE INTO wordlist(word,created_at,updated_at) values (?,now(),now())", word)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		fmt.Println(err.(*errors.Error).ErrorStack())
 		return model, err
 	}
@@ -74,7 +74,7 @@ func InsertIntoWordListTable(db *sqlx.DB, word string) (model.Result, error) {
 	err = result.StructScan(&model)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		fmt.Println(err.(*errors.Error).ErrorStack())
 		return model, err
 	}
@@ -95,7 +95,7 @@ func CheckWordListTable(db *sqlx.DB, word model.WordModel) (model.Result, error)
 
 	if err != nil {
 		// fmt.Println(err.(*errors.Error).ErrorStack())
-		fmt.Println(err)
+		utils.Errorf(err)
 		return model, err
 	}
 

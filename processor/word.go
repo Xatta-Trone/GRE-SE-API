@@ -26,7 +26,7 @@ func ReadTableAndProcessWord(word string) {
 	err := rs.StructScan(&r)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 
 	fmt.Println(r.ID)
@@ -302,29 +302,29 @@ func getPosIndex(results []model.Combined, pos string) int {
 func SaveToDB(wordData model.WordDataModel) {
 	tx, err := database.Gdb.Begin()
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 	// insert the word into the words table
 	data, err := json.Marshal(wordData)
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 	_, err = tx.Exec("Update words set word_data=? where word=?", string(data), wordData.Word)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 	// update the wordlist table
 	_, err = tx.Exec("Update wordlist set is_all_parsed=1 where word=?", wordData.Word)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 
 }
@@ -332,19 +332,19 @@ func SaveToDB(wordData model.WordDataModel) {
 func UpdateDBNeedsAttention(word string) {
 	tx, err := database.Gdb.Begin()
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 	// update the wordlist table
 	_, err = tx.Exec("Update wordlist set needs_attention=1 where word=?", word)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 	}
 
 }

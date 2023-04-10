@@ -114,7 +114,7 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 		}
 
 		fmt.Println(words)
-		fmt.Println(err)
+		utils.Errorf(err)
 
 		if len(words) == 0 {
 			utils.PrintR("ProcessMemriseWords No word found ")
@@ -162,7 +162,7 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 
 			fmt.Println(words)
 			fmt.Println(title)
-			fmt.Println(err)
+			utils.Errorf(err)
 
 			if len(words) == 0 {
 				utils.PrintR("ProcessQuizletWords No word found ")
@@ -193,7 +193,7 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 
 		fmt.Println(words)
 		fmt.Println(title)
-		fmt.Println(err)
+		utils.Errorf(err)
 
 		if len(words) == 0 {
 			utils.PrintR("ProcessQuizletWords No word found ")
@@ -227,7 +227,7 @@ func (listService *ListProcessorService) ProcessVocabularyWords(listMeta model.L
 
 	fmt.Println(words)
 	fmt.Println(title)
-	fmt.Println(err)
+	utils.Errorf(err)
 
 	if len(words) == 0 {
 		utils.PrintR("ProcessVocabularyWords No word found ")
@@ -274,7 +274,7 @@ func (listService *ListProcessorService) ProcessWordsOfSingleGroup(words []strin
 
 		if err != nil && err != sql.ErrNoRows {
 			fmt.Println("err in List processor service CheckWordsTableForWord func ==")
-			fmt.Println(err)
+			utils.Errorf(err)
 			continue
 		}
 
@@ -291,7 +291,7 @@ func (listService *ListProcessorService) ProcessWordsOfSingleGroup(words []strin
 			wordModel, err := listService.InsertIntoWordsTable(word)
 			if err != nil {
 				fmt.Println("err in List processor service InsertIntoWordsTable func ==")
-				fmt.Println(err)
+				utils.Errorf(err)
 				continue
 			}
 
@@ -324,14 +324,14 @@ func (listService *ListProcessorService) InsertIntoWordsTable(word string) (mode
 	res, err := listService.db.NamedExec("Insert into words(word,created_at) values(:word,:created_at)", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return model, err
 	}
 
 	lastId, err := res.LastInsertId()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return model, err
 	}
 
@@ -346,7 +346,7 @@ func (listService *ListProcessorService) InsertIntoWordsTable(word string) (mode
 	err = result.StructScan(&model)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return model, err
 	}
 
@@ -360,14 +360,14 @@ func (listService *ListProcessorService) InsertListWordRelation(wordId, listId i
 	res, err := listService.db.NamedExec("Insert into list_word_relation(word_id,list_id,created_at) values(:word_id,:list_id,:created_at)", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return err
 	}
 
 	lastId, err := res.LastInsertId()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return err
 	}
 
@@ -390,7 +390,7 @@ func (listService *ListProcessorService) CheckWordsTableForWord(word string) (ui
 
 	if err != nil {
 
-		fmt.Println(err)
+		utils.Errorf(err)
 		return ResultId, err
 	}
 
@@ -468,14 +468,14 @@ func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta m
 	res, err := listService.db.NamedExec("Insert into lists(name,slug,list_meta_id,visibility,user_id,created_at,updated_at) values(:name,:slug,:list_meta_id,:visibility,:user_id,:created_at,:updated_at)", queryMap)
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return -1, err
 	}
 
 	lastId, err := res.LastInsertId()
 
 	if err != nil {
-		fmt.Println(err)
+		utils.Errorf(err)
 		return -1, err
 	}
 
