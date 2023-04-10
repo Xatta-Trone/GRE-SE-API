@@ -341,3 +341,74 @@ func (ctl *ListsController) Delete(c *gin.Context) {
 	})
 
 }
+
+func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
+
+	// validate the given slug
+	slug := c.Param("slug")
+	wordIdTemp := c.Query("word_id")
+
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+		return
+	}
+	if wordIdTemp == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param word id"})
+		return
+	}
+
+
+
+	userIdString := c.GetString("user_id")
+
+	if userIdString == "" {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
+		return
+	}
+
+	userId, err := strconv.ParseUint(userIdString, 10, 64)
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		return
+	}
+
+	// get the data
+	list, err := ctl.repository.FindOneBySlug(slug)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// check permissions and visibility
+	if userId != list.UserId {
+		c.JSON(http.StatusForbidden, gin.H{"errors": "Unauthorized."})
+		return
+	}
+
+	wordId, _ := strconv.ParseUint(wordIdTemp, 10, 64)
+
+	// delete the record
+	ok, err := ctl.repository.DeleteWordInList(wordId, list.Id)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, gin.H{
+		"deleted": true,
+	})
+
+}

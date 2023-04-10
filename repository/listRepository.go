@@ -19,6 +19,7 @@ type ListRepositoryInterface interface {
 	FindOneBySlug(slug string) (model.ListModel, error)
 	DeleteFromListMeta(listMetaId uint64) (bool, error)
 	Delete(listMetaId uint64) (bool, error)
+	DeleteWordInList(wordId, listId uint64) (bool, error)
 }
 
 type ListRepository struct {
@@ -51,7 +52,6 @@ func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListM
 		utils.Errorf(err)
 		return models, err
 	}
-
 
 	return models, nil
 
@@ -176,13 +176,12 @@ func (rep *ListRepository) Update(id uint64, req *requests.ListsUpdateRequestStr
 
 }
 
-
 func (rep *ListRepository) GenerateUniqueListSlug(title string, id uint64) string {
 
 	slug := slug.Make(title)
 	// now check the slug
 
-	row := rep.Db.QueryRow("SELECT Count(id) FROM lists WHERE slug like ? and where id != ?", fmt.Sprintf("%%%s-%%", slug),id)
+	row := rep.Db.QueryRow("SELECT Count(id) FROM lists WHERE slug like ? and where id != ?", fmt.Sprintf("%%%s-%%", slug), id)
 	var totalCount int
 	err := row.Scan(&totalCount)
 
@@ -238,6 +237,38 @@ func (rep *ListRepository) Delete(listId uint64) (bool, error) {
 	queryMap := map[string]interface{}{"id": listId}
 
 	query := "Delete FROM lists where id=:id"
+
+	res, err := rep.Db.NamedExec(query, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+
+	return true, nil
+
+}
+
+func (rep *ListRepository) DeleteWordInList(wordId, listId uint64) (bool, error) {
+
+	queryMap := map[string]interface{}{"list_id": listId, "word_id": wordId}
+
+	query := "Delete FROM list_word_relation where list_id=:list_id and word_id=:word_id "
 
 	res, err := rep.Db.NamedExec(query, queryMap)
 
