@@ -1,9 +1,11 @@
 package repository
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
+	"github.com/gosimple/slug"
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
@@ -13,6 +15,10 @@ import (
 type ListRepositoryInterface interface {
 	Create(req *requests.ListsCreateRequestStruct) (model.ListMetaModel, error)
 	Index(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
+	Update(id uint64, req *requests.ListsUpdateRequestStruct) (bool, error)
+	FindOneBySlug(slug string) (model.ListModel, error)
+	DeleteFromListMeta(listMetaId uint64) (bool, error)
+	Delete(listMetaId uint64) (bool, error)
 }
 
 type ListRepository struct {
@@ -110,5 +116,151 @@ func (rep *ListRepository) FindOne(id int) (model.ListMetaModel, error) {
 	}
 
 	return modelx, nil
+
+}
+
+func (rep *ListRepository) FindOneBySlug(slug string) (model.ListModel, error) {
+
+	modelx := model.ListModel{}
+
+	queryMap := map[string]interface{}{"slug": slug}
+
+	query := "SELECT * FROM lists where slug=:slug"
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return modelx, err
+	}
+	err = nstmt.Get(&modelx, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return modelx, err
+	}
+
+	return modelx, nil
+
+}
+
+func (rep *ListRepository) Update(id uint64, req *requests.ListsUpdateRequestStruct) (bool, error) {
+
+	slug := rep.GenerateUniqueListSlug(req.Name, id)
+
+	queryMap := map[string]interface{}{"id": id, "name": req.Name, "slug": slug, "visibility": req.Visibility, "updated_at": time.Now().UTC()}
+
+	res, err := rep.Db.NamedExec("Update lists set name=:name,slug=:slug,visibility=:visibility,updated_at=:updated_at where id=:id", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+
+	return true, nil
+
+}
+
+
+func (rep *ListRepository) GenerateUniqueListSlug(title string, id uint64) string {
+
+	slug := slug.Make(title)
+	// now check the slug
+
+	row := rep.Db.QueryRow("SELECT Count(id) FROM lists WHERE slug like ? and where id != ?", fmt.Sprintf("%%%s-%%", slug),id)
+	var totalCount int
+	err := row.Scan(&totalCount)
+
+	// fmt.Println(slug, fmt.Sprintf("%s-%%", slug), totalCount)
+
+	if err != nil {
+		// just add the timestamp and return
+		return fmt.Sprintf("%s-%d", slug, time.Now().UnixMilli())
+	}
+
+	if totalCount > 0 {
+		return fmt.Sprintf("%s-%d", slug, totalCount+1)
+
+	}
+
+	return fmt.Sprintf("%s-%d", slug, 0)
+}
+
+func (rep *ListRepository) DeleteFromListMeta(listMetaId uint64) (bool, error) {
+
+	queryMap := map[string]interface{}{"id": listMetaId}
+
+	query := "Delete FROM list_meta where id=:id"
+
+	res, err := rep.Db.NamedExec(query, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+
+	return true, nil
+
+}
+
+func (rep *ListRepository) Delete(listId uint64) (bool, error) {
+
+	queryMap := map[string]interface{}{"id": listId}
+
+	query := "Delete FROM lists where id=:id"
+
+	res, err := rep.Db.NamedExec(query, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+
+	return true, nil
 
 }

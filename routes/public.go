@@ -17,8 +17,9 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 
 	// list controller
 	listRepo := repository.NewListRepository(database.Gdb)
+	wordRepo := repository.NewWordRepository(database.Gdb)
 	listService := services.NewListProcessorService(database.Gdb)
-	listController := publicController.NewListsController(listRepo,listService)
+	listController := publicController.NewListsController(listRepo,listService,wordRepo)
 
 	public := r.Group("/")
 
@@ -39,6 +40,10 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	// lists
 	authRoutes.GET("/lists", listController.Index)
 	authRoutes.POST("/lists", listController.Create)
+	authRoutes.GET("/lists/:slug", listController.FindOne)
+	authRoutes.PUT("/lists/:slug", listController.Update)
+	authRoutes.PATCH("/lists/:slug", listController.Update)
+	authRoutes.DELETE("/lists/:slug", listController.Delete)
 
 	return r
 }
