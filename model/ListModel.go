@@ -16,7 +16,7 @@ type ListModel struct {
 
 type ListMetaModel struct {
 	Id         uint64    `json:"id"`
-	UserId     uint64    `json:"user_id" db:"user_id"`
+	UserId     uint64    `json:"user_id,omitempty" db:"user_id"`
 	Name       string    `json:"name"`
 	Url        *string   `json:"url"`
 	Words      *string   `json:"words"`

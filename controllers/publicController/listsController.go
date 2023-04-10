@@ -1,6 +1,7 @@
 package publicController
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -28,6 +29,53 @@ func (ctl *ListsController) ListsByUserId(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": "user",
 	})
+}
+
+func (ctl *ListsController) Index(c *gin.Context) {
+
+	// get the user id
+	userIdString := c.GetString("user_id")
+
+	if userIdString == "" {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
+		return
+	}
+
+	userId, err := strconv.ParseUint(userIdString, 10, 64)
+
+	fmt.Println(userId)
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		return
+	}
+
+	// validation request
+	req, errs := requests.ListsIndexRequest(c)
+
+	// fmt.Println(req)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
+		return
+	}
+
+	// attach the user id to the request
+	req.UserId = userId
+
+	// get the data
+	word, err := ctl.repository.Index(req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"data": word,
+		"meta": req,
+	})
+
 }
 
 func (ctl *ListsController) Create(c *gin.Context) {

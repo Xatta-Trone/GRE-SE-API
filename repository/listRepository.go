@@ -12,6 +12,7 @@ import (
 
 type ListRepositoryInterface interface {
 	Create(req *requests.ListsCreateRequestStruct) (model.ListMetaModel, error)
+	Index(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
 }
 
 type ListRepository struct {
@@ -20,6 +21,34 @@ type ListRepository struct {
 
 func NewListRepository(db *sqlx.DB) *ListRepository {
 	return &ListRepository{Db: db}
+}
+
+func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListModel, error) {
+
+	models := []model.ListModel{}
+
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
+
+	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	// I am using named execution to make it more clear
+	query := fmt.Sprintf("SELECT id,name,slug,visibility,list_meta_id,status,created_at,updated_at FROM lists where name like :query and user_id = :user_id order by id %s limit :limit offset :offset", order)
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+	err = nstmt.Select(&models, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+
+	return models, nil
+
 }
 
 func (rep *ListRepository) Create(req *requests.ListsCreateRequestStruct) (model.ListMetaModel, error) {
@@ -53,8 +82,7 @@ func (rep *ListRepository) Create(req *requests.ListsCreateRequestStruct) (model
 		return newRecord, err
 	}
 
-	// now run a process to process these words 
-	
+	// now run a process to process these words
 
 	return newRecord, nil
 

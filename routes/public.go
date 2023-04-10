@@ -37,6 +37,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.PATCH("/update", authController.Update)
 
 	// lists
+	authRoutes.GET("/lists", listController.Index)
 	authRoutes.POST("/lists", listController.Create)
 
 	return r
