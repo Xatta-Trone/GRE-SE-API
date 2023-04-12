@@ -21,6 +21,10 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	listService := services.NewListProcessorService(database.Gdb)
 	listController := publicController.NewListsController(listRepo, listService, wordRepo)
 
+	// folders 
+	folderRepo := repository.NewFolderRepository(database.Gdb)
+	folderController := publicController.NewFolderController(folderRepo,listRepo)
+
 	public := r.Group("/")
 
 	public.POST("/register", authController.Register)
@@ -45,6 +49,15 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.PATCH("/lists/:slug", listController.Update)
 	authRoutes.DELETE("/lists-word/:slug", listController.DeleteWordInList)
 	authRoutes.DELETE("/lists/:slug", listController.Delete)
+
+	// folders 
+	authRoutes.GET("/folders",folderController.Index)
+	authRoutes.POST("/folders",folderController.Create)
+	authRoutes.GET("/folders/:id",folderController.FindOne)
+	authRoutes.PUT("/folders/:id",folderController.Update)
+	authRoutes.PATCH("/folders/:id",folderController.Update)
+	authRoutes.DELETE("/folders/:id",folderController.Delete)
+	authRoutes.POST("/folders/:id/toggle-list",folderController.ToggleList)
 
 	return r
 }

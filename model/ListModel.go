@@ -5,7 +5,7 @@ import "time"
 type ListModel struct {
 	Id         uint64    `json:"id"`
 	UserId     uint64    `json:"user_id" db:"user_id"`
-	ListMetaId *uint64    `json:"list_meta_id" db:"list_meta_id"`
+	ListMetaId *uint64   `json:"list_meta_id" db:"list_meta_id"`
 	Name       string    `json:"name"`
 	Slug       string    `json:"slug"`
 	Visibility int       `json:"visibility"`
@@ -34,7 +34,7 @@ type ListWordModel struct {
 type FolderModel struct {
 	Id         uint64    `json:"id"`
 	UserId     uint64    `json:"user_id" db:"user_id"`
-	ListMetaId *uint64    `json:"list_meta_id" db:"list_meta_id"`
+	ListMetaId *uint64   `json:"list_meta_id" db:"list_meta_id"`
 	Name       string    `json:"name"`
 	Slug       string    `json:"slug"`
 	Visibility int       `json:"visibility"`
@@ -43,3 +43,7 @@ type FolderModel struct {
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
 }
 
+type FolderListRelationModel struct {
+	FolderId uint64 `json:"folder_id" db:"folder_id"`
+	ListId   uint64 `json:"list_id" db:"list_id"`
+}

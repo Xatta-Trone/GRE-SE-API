@@ -11,6 +11,11 @@ const (
 )
 
 const (
+	FolderVisibilityPublic int = iota + 1
+	FolderVisibilityMe
+)
+
+const (
 	ListMetaStatusCreated int = iota
 	ListMetaStatusParsing
 	ListMetaStatusComplete

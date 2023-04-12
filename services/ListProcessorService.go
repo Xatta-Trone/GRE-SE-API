@@ -494,9 +494,9 @@ func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta m
 
 	if folderId != 0 {
 		folderIdToInsert = folderId
-	} else {
-		ListIdToInsert = listMeta.Id
 	}
+
+	ListIdToInsert = listMeta.Id
 
 	queryMap := map[string]interface{}{"name": title, "slug": slug, "list_meta_id": ListIdToInsert, "visibility": listMeta.Visibility, "user_id": listMeta.UserId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
 

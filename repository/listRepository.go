@@ -20,6 +20,7 @@ type ListRepositoryInterface interface {
 	DeleteFromListMeta(listMetaId uint64) (bool, error)
 	Delete(listMetaId uint64) (bool, error)
 	DeleteWordInList(wordId, listId uint64) (bool, error)
+	ListsByFolderId(req *requests.FolderListIndexReqStruct) ([]model.ListModel, error)
 }
 
 type ListRepository struct {
@@ -39,6 +40,33 @@ func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListM
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
 	query := fmt.Sprintf("SELECT id,name,slug,visibility,list_meta_id,status,created_at,updated_at FROM lists where name like :query and user_id = :user_id order by id %s limit :limit offset :offset", order)
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+	err = nstmt.Select(&models, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
+
+}
+
+func (rep *ListRepository) ListsByFolderId(r *requests.FolderListIndexReqStruct) ([]model.ListModel, error) {
+
+	models := []model.ListModel{}
+
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "folder_id": r.FolderId}
+
+	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	// I am using named execution to make it more clear
+	query := fmt.Sprintf("SELECT * FROM lists where (name like :query and user_id = :user_id) and id in (select list_id from folder_list_relation where folder_id = :folder_id ) order by id %s limit :limit offset :offset", order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -181,7 +209,7 @@ func (rep *ListRepository) GenerateUniqueListSlug(title string, id uint64) strin
 	slug := slug.Make(title)
 	// now check the slug
 
-	row := rep.Db.QueryRow("SELECT Count(id) FROM lists WHERE slug like ? and where id != ?", fmt.Sprintf("%%%s-%%", slug), id)
+	row := rep.Db.QueryRow("SELECT Count(id) FROM lists WHERE slug like ? and id != ?", fmt.Sprintf("%%%s-%%", slug), id)
 	var totalCount int
 	err := row.Scan(&totalCount)
 
