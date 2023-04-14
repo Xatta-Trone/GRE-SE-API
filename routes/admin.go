@@ -23,6 +23,11 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	usersRepo := repository.NewUserRepository(database.Gdb)
 	usersController := controllers.NewUsersController(usersRepo)
 
+	// folders
+	folderRepo := repository.NewFolderRepository(database.Gdb)
+	listRepo := repository.NewListRepository(database.Gdb)
+	folderController := controllers.NewAdminFolderController(folderRepo, listRepo,usersRepo)
+
 	admin := r.Group("/admin")
 
 	admin.GET("/login", func(c *gin.Context) {
@@ -56,7 +61,17 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	auth.PATCH("/users/:id", usersController.Update)
 	auth.PUT("/users/:id", usersController.Update)
 	auth.DELETE("/users/:id", usersController.Delete)
-	
+
+	// folders
+	admin.GET("/folders",folderController.Index)
+	admin.POST("/folders",folderController.Create)
+	admin.GET("/folders/:id",folderController.FindOne)
+	admin.PUT("/folders/:id",folderController.Update)
+	admin.PATCH("/folders/:id",folderController.Update)
+	admin.DELETE("/folders/:id",folderController.Delete)
+	admin.POST("/folders/:id/toggle-list",folderController.ToggleList)
+
+
 
 	return r
 

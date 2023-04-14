@@ -1,34 +1,32 @@
-package publicController
+package controllers
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/xatta-trone/words-combinator/enums"
+	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/utils"
 )
 
-type FolderController struct {
+type AdminFolderController struct {
 	repository     repository.FolderRepositoryInterface
 	listRepository repository.ListRepositoryInterface
+	userRepository repository.UserRepositoryInterface
 }
 
-func NewFolderController(repository repository.FolderRepositoryInterface, listRepository repository.ListRepositoryInterface) *FolderController {
-	return &FolderController{
+func NewAdminFolderController(repository repository.FolderRepositoryInterface, listRepository repository.ListRepositoryInterface, userRepository repository.UserRepositoryInterface) *AdminFolderController {
+	return &AdminFolderController{
 		repository:     repository,
 		listRepository: listRepository,
+		userRepository: userRepository,
 	}
 
 }
 
-func (ctl *FolderController) Index(c *gin.Context) {
-	userId := utils.GetUserId(c)
-
-	fmt.Println(userId)
+func (ctl *AdminFolderController) Index(c *gin.Context) {
 
 	req, errs := requests.FolderIndexRequest(c)
 
@@ -37,9 +35,93 @@ func (ctl *FolderController) Index(c *gin.Context) {
 		return
 	}
 
-	req.UserId = userId
+	// get the folder records
+	folders, err := ctl.repository.AdminIndex(req)
 
-	folders, err := ctl.repository.Index(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// make a temporary variable to copy the result then export via gin
+	foldersToExport := make([]model.FolderModel, 0)
+	userIds := []uint64{}
+	usersMap := make(map[uint64]model.UserModel)
+
+	// check if folders len is zero
+	if len(folders) == 0 {
+		// send empty response
+		c.JSON(200, gin.H{
+			"data": foldersToExport,
+			"meta": req,
+		})
+		return
+	}
+
+	for _, folder := range folders {
+		userIds = append(userIds, folder.UserId)
+	}
+	// get the users
+	users, _ := ctl.userRepository.In(userIds)
+	// map the users to user map to avoid second level iteration
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	// now attach the users to the folders result
+	for _, folder := range folders {
+		user := usersMap[folder.UserId]
+		f := model.FolderModel(folder)
+		f.User = &user
+
+		foldersToExport = append(foldersToExport, f)
+
+	}
+
+	// fmt.Println(folders)
+
+	c.JSON(200, gin.H{
+		"data": foldersToExport,
+		"meta": req,
+	})
+}
+
+func (ctl *AdminFolderController) FindOne(c *gin.Context) {
+
+	// get the folder id
+	folderId, err := utils.ParseParamToUint64(c, "id")
+
+	if err != nil {
+		utils.Errorf(err)
+		return
+	}
+
+	// get the data
+	folder, err := ctl.repository.FindOne(folderId)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// now get the lists associated with this folder
+	// validation request
+	req, errs := requests.FolderListIndexRequest(c)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
+		return
+	}
+
+	req.UserId = folder.UserId
+	req.FolderId = folder.Id
+
+	lists, err := ctl.listRepository.ListsByFolderId(req)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
@@ -47,15 +129,14 @@ func (ctl *FolderController) Index(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"data": folders,
-		"meta": req,
+		"lists":  lists,
+		"folder": folder,
+		"meta":   req,
 	})
+
 }
 
-func (ctl *FolderController) Create(c *gin.Context) {
-	userId := utils.GetUserId(c)
-
-	fmt.Println(userId)
+func (ctl *AdminFolderController) Create(c *gin.Context) {
 
 	// request validation
 	req, err := requests.FolderCreateRequest(c)
@@ -64,9 +145,6 @@ func (ctl *FolderController) Create(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err})
 		return
 	}
-
-	// set the user id
-	req.UserId = userId
 
 	// now create the record
 	folder, err := ctl.repository.Create(req)
@@ -82,11 +160,7 @@ func (ctl *FolderController) Create(c *gin.Context) {
 	})
 }
 
-func (ctl *FolderController) FindOne(c *gin.Context) {
-
-	userId := utils.GetUserId(c)
-
-	fmt.Println(userId)
+func (ctl *AdminFolderController) Update(c *gin.Context) {
 
 	// get the folder id
 	folderId, err := utils.ParseParamToUint64(c, "id")
@@ -95,8 +169,6 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 		utils.Errorf(err)
 		return
 	}
-
-	fmt.Println(folderId)
 
 	// get the data
 	folder, err := ctl.repository.FindOne(folderId)
@@ -108,75 +180,6 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-		return
-	}
-
-	// check permissions and visibility
-	if userId != folder.UserId && enums.FolderVisibilityPublic != folder.Visibility {
-		c.JSON(http.StatusForbidden, gin.H{"errors": "The folder either not public or deleted."})
-		return
-	}
-
-	// now get the lists associated with this folder
-	// validation request
-	req, errs := requests.FolderListIndexRequest(c)
-
-	if errs != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
-		return
-	}
-
-	req.UserId = userId
-	req.FolderId = folderId
-
-	lists, err := ctl.listRepository.ListsByFolderId(req)
-
-	fmt.Println(lists)
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-		return
-	}
-
-	c.JSON(200, gin.H{
-		"lists":  lists,
-		"folder": folder,
-		"meta":   req,
-	})
-
-}
-
-func (ctl *FolderController) Update(c *gin.Context) {
-	userId := utils.GetUserId(c)
-
-	fmt.Println(userId)
-
-	// get the folder id
-	folderId, err := utils.ParseParamToUint64(c, "id")
-
-	if err != nil {
-		utils.Errorf(err)
-		return
-	}
-
-	fmt.Println(folderId)
-
-	// get the data
-	folder, err := ctl.repository.FindOne(folderId)
-
-	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
-		return
-	}
-
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-		return
-	}
-
-	// check permissions and visibility
-	if userId != folder.UserId {
-		c.JSON(http.StatusForbidden, gin.H{"errors": "Unauthorized."})
 		return
 	}
 
@@ -189,22 +192,22 @@ func (ctl *FolderController) Update(c *gin.Context) {
 		return
 	}
 
-	if req.Name != folder.Name {
-		// update the data
-		ok, err := ctl.repository.Update(folder.Id, req)
-		if err != nil || !ok {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-			return
-		}
+	ok, err := ctl.repository.Update(folder.Id, req)
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
 	}
 
-	c.JSON(http.StatusNoContent, gin.H{
-		"updated": true,
+	// send the new data 
+	newData,_ := ctl.repository.FindOne(folderId)
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": newData,
 	})
 
 }
 
-func (ctl *FolderController) Delete(c *gin.Context) {
+func (ctl *AdminFolderController) Delete(c *gin.Context) {
 	// determine if the lists should be deleted or not
 	var deleteLists bool = false
 	delete := utils.ParseQueryString(c, "delete_lists")
@@ -213,12 +216,6 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 		deleteLists = true
 	}
 
-	fmt.Println(delete, deleteLists)
-
-	userId := utils.GetUserId(c)
-
-	fmt.Println(userId)
-
 	// get the folder id
 	folderId, err := utils.ParseParamToUint64(c, "id")
 
@@ -226,8 +223,6 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 		utils.Errorf(err)
 		return
 	}
-
-	fmt.Println(folderId)
 
 	// get the data
 	folder, err := ctl.repository.FindOne(folderId)
@@ -239,12 +234,6 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-		return
-	}
-
-	// check permissions and visibility
-	if userId != folder.UserId {
-		c.JSON(http.StatusForbidden, gin.H{"errors": "Unauthorized."})
 		return
 	}
 
@@ -281,11 +270,8 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 
 }
 
-func (ctl *FolderController) ToggleList(c *gin.Context) {
+func (ctl *AdminFolderController) ToggleList(c *gin.Context) {
 
-	userId := utils.GetUserId(c)
-
-	fmt.Println(userId)
 
 	// get the folder id
 	folderId, err := utils.ParseParamToUint64(c, "id")
@@ -297,11 +283,8 @@ func (ctl *FolderController) ToggleList(c *gin.Context) {
 
 	// list id
 	listId := utils.ParseQueryToUint64(c, "list_id")
-	fmt.Println(listId)
 
 	ok, err := ctl.repository.ToggleList(folderId, listId)
-
-	fmt.Println(ok, err)
 
 	if err != nil || !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})

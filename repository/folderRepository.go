@@ -16,6 +16,7 @@ import (
 
 type FolderRepositoryInterface interface {
 	Index(req *requests.FolderIndexReqStruct) ([]model.FolderModel, error)
+	AdminIndex(req *requests.FolderIndexReqStruct) ([]model.FolderModel, error)
 	Create(req *requests.FolderCreateRequestStruct) (model.FolderModel, error)
 	FindOne(id uint64) (model.FolderModel, error)
 	Update(id uint64, req *requests.FolderUpdateRequestStruct) (bool, error)
@@ -36,9 +37,40 @@ func (rep *FolderRepository) Index(r *requests.FolderIndexReqStruct) ([]model.Fo
 
 	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
 
+	fmt.Println(r.UserId)
+
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT * FROM folders where name like :query and user_id = :user_id order by id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT * FROM folders where name like :query and user_id = nullif(:user_id,0) order by id %s limit :limit offset :offset", order)
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+	err = nstmt.Select(&models, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
+
+}
+
+func (rep *FolderRepository) AdminIndex(r *requests.FolderIndexReqStruct) ([]model.FolderModel, error) {
+
+	models := []model.FolderModel{}
+
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
+
+	fmt.Println(r.UserId)
+
+	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	// I am using named execution to make it more clear
+	query := fmt.Sprintf("SELECT folders.* FROM folders INNER JOIN users on folders.user_id = users.id where folders.name like :query or users.name like :query or users.email like :query or users.username like :query order by folders.id %s limit :limit offset :offset", order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 

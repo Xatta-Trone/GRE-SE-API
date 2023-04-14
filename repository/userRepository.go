@@ -14,6 +14,7 @@ import (
 
 type UserRepositoryInterface interface {
 	Index(req requests.UsersIndexReqStruct) ([]model.UserModel, error)
+	In(ids []uint64) ([]model.UserModel, error)
 	FindOne(id int) (model.UserModel, error)
 	FindOneByEmail(email string) (model.UserModel, error)
 	FindOneByUserName(username string) (model.UserModel, error)
@@ -58,6 +59,29 @@ func (rep *UserRepository) Index(r requests.UsersIndexReqStruct) ([]model.UserMo
 
 }
 
+func (rep *UserRepository) In(ids []uint64) ([]model.UserModel, error) {
+
+	models := []model.UserModel{}
+
+	query, args, err := sqlx.In("SELECT id,name,email,username,created_at,updated_at FROM users where id in (?)", ids)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	query = rep.Db.Rebind(query)
+
+	err = rep.Db.Select(&models, query, args...)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
+
+}
 func (rep *UserRepository) FindOne(id int) (model.UserModel, error) {
 
 	modelx := model.UserModel{}
