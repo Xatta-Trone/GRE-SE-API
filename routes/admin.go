@@ -26,9 +26,15 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	// folders
 	folderRepo := repository.NewFolderRepository(database.Gdb)
 	listRepo := repository.NewListRepository(database.Gdb)
-	folderController := controllers.NewAdminFolderController(folderRepo, listRepo,usersRepo)
+	folderController := controllers.NewAdminFolderController(folderRepo, listRepo, usersRepo)
+
+	// list controller
+	listService := services.NewListProcessorService(database.Gdb)
+	listController := controllers.NewListsController(listRepo, listService, wordRepo, usersRepo)
 
 	admin := r.Group("/admin")
+
+	admin.Use(middlewares.SetAdminScope())
 
 	admin.GET("/login", func(c *gin.Context) {
 		token, _ := services.GenerateToken("dummy")
@@ -63,15 +69,22 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	auth.DELETE("/users/:id", usersController.Delete)
 
 	// folders
-	admin.GET("/folders",folderController.Index)
-	admin.POST("/folders",folderController.Create)
-	admin.GET("/folders/:id",folderController.FindOne)
-	admin.PUT("/folders/:id",folderController.Update)
-	admin.PATCH("/folders/:id",folderController.Update)
-	admin.DELETE("/folders/:id",folderController.Delete)
-	admin.POST("/folders/:id/toggle-list",folderController.ToggleList)
+	admin.GET("/folders", folderController.Index)
+	admin.POST("/folders", folderController.Create)
+	admin.GET("/folders/:id", folderController.FindOne)
+	admin.PUT("/folders/:id", folderController.Update)
+	admin.PATCH("/folders/:id", folderController.Update)
+	admin.DELETE("/folders/:id", folderController.Delete)
+	admin.POST("/folders/:id/toggle-list", folderController.ToggleList)
 
-
+	// lists
+	admin.GET("/lists", listController.Index)
+	admin.POST("/lists", listController.Create)
+	admin.GET("/lists/:id", listController.FindOne)
+	admin.PUT("/lists/:id", listController.Update)
+	admin.PATCH("/lists/:id", listController.Update)
+	admin.DELETE("/lists/:id", listController.Delete)
+	admin.DELETE("/lists-word/:slug", listController.DeleteWordInList)
 
 	return r
 

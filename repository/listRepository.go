@@ -15,8 +15,10 @@ import (
 type ListRepositoryInterface interface {
 	Create(req *requests.ListsCreateRequestStruct) (model.ListMetaModel, error)
 	Index(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
+	AdminIndex(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
 	Update(id uint64, req *requests.ListsUpdateRequestStruct) (bool, error)
 	FindOneBySlug(slug string) (model.ListModel, error)
+	FindOne(id uint64) (model.ListModel, error)
 	DeleteFromListMeta(listMetaId uint64) (bool, error)
 	Delete(listMetaId uint64) (bool, error)
 	DeleteWordInList(wordId, listId uint64) (bool, error)
@@ -40,6 +42,33 @@ func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListM
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
 	query := fmt.Sprintf("SELECT id,name,slug,visibility,list_meta_id,status,created_at,updated_at FROM lists where name like :query and user_id = :user_id order by id %s limit :limit offset :offset", order)
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+	err = nstmt.Select(&models, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
+
+}
+
+func (rep *ListRepository) AdminIndex(r *requests.ListsIndexReqStruct) ([]model.ListModel, error) {
+
+	models := []model.ListModel{}
+
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
+
+	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	// I am using named execution to make it more clear
+	query := fmt.Sprintf("SELECT lists.* FROM lists INNER JOIN users on lists.user_id = users.id where lists.name like :query or users.name like :query or users.email like :query or users.username like :query order by lists.id %s limit :limit offset :offset", order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -109,7 +138,7 @@ func (rep *ListRepository) Create(req *requests.ListsCreateRequestStruct) (model
 		return newRecord, fmt.Errorf("there was a problem with the insertion. last id: %d", lastId)
 	}
 
-	newRecord, err = rep.FindOne(int(lastId))
+	newRecord, err = rep.FindOneListMeta(uint64(lastId))
 
 	if err != nil {
 		utils.Errorf(err)
@@ -122,13 +151,38 @@ func (rep *ListRepository) Create(req *requests.ListsCreateRequestStruct) (model
 
 }
 
-func (rep *ListRepository) FindOne(id int) (model.ListMetaModel, error) {
+func (rep *ListRepository) FindOneListMeta(id uint64) (model.ListMetaModel, error) {
 
 	modelx := model.ListMetaModel{}
 
 	queryMap := map[string]interface{}{"id": id}
 
 	query := "SELECT * FROM list_meta where id=:id"
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return modelx, err
+	}
+	err = nstmt.Get(&modelx, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return modelx, err
+	}
+
+	return modelx, nil
+
+}
+
+func (rep *ListRepository) FindOne(id uint64) (model.ListModel, error) {
+
+	modelx := model.ListModel{}
+
+	queryMap := map[string]interface{}{"id": id}
+
+	query := "SELECT * FROM lists where id=:id"
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 

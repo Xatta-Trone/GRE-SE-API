@@ -12,18 +12,21 @@ import (
 )
 
 type ListsCreateRequestStruct struct {
-	Name       string  `json:"name" form:"name" `
+	Name       string `json:"name" form:"name" `
 	Url        string `json:"url" form:"url" `
 	Words      string `json:"words" form:"words" `
-	Visibility int     `json:"visibility" form:"visibility,default=1" `
-	UserId     uint64  `json:"user_id" form:"user_id"`
+	Visibility int    `json:"visibility" form:"visibility,default=1" `
+	UserId     uint64 `json:"user_id" form:"user_id"`
+	Scope      string `json:"scope" form:"scope,default=user"` // either admin or user; userId required when scope is admin
 }
 
 func (c ListsCreateRequestStruct) Validate() error {
 	return validation.ValidateStruct(&c,
 		validation.Field(&c.Name, validation.Required),
+		validation.Field(&c.Scope, validation.Required),
 		validation.Field(&c.Url, validation.When(c.Words == "", validation.Required, is.URL, validation.By(checkUrl(c.Url)))),
 		validation.Field(&c.Words, validation.When(c.Url == "", validation.Required)),
+		validation.Field(&c.UserId, validation.When(c.Scope == "admin", validation.Required)),
 		validation.Field(&c.Visibility, validation.Required, validation.In(enums.ListVisibilityMe, enums.ListVisibilityPublic)),
 	)
 }

@@ -1,4 +1,4 @@
-package publicController
+package controllers
 
 import (
 	"database/sql"
@@ -7,44 +7,32 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/xatta-trone/words-combinator/enums"
+	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/services"
 	"github.com/xatta-trone/words-combinator/utils"
 )
 
-type ListsController struct {
+type AdminListsController struct {
 	repository  repository.ListRepositoryInterface
 	listService services.ListProcessorServiceInterface
 	wordRepo    repository.WordRepositoryInterface
+	userRepo    repository.UserRepositoryInterface
 }
 
-func NewListsController(repository repository.ListRepositoryInterface, listService services.ListProcessorServiceInterface, wordRepo repository.WordRepositoryInterface) *ListsController {
-	return &ListsController{
+func NewListsController(repository repository.ListRepositoryInterface, listService services.ListProcessorServiceInterface, wordRepo repository.WordRepositoryInterface, userRepo repository.UserRepositoryInterface) *AdminListsController {
+	return &AdminListsController{
 		repository:  repository,
 		listService: listService,
 		wordRepo:    wordRepo,
+		userRepo:    userRepo,
 	}
 }
 
-func (ctl *ListsController) ListsByUserId(c *gin.Context) {
-	// get all the lists by user id
+func (ctl *AdminListsController) Index(c *gin.Context) {
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": "user",
-	})
-}
-
-func (ctl *ListsController) Index(c *gin.Context) {
-
-	userId,err := utils.GetUserId(c)
-
-	if err != nil {
-		return
-	}
-
-	fmt.Println(userId)
+	fmt.Println("param", c.Param("scope"), c.Query("scope"))
 
 	// validation request
 	req, errs := requests.ListsIndexRequest(c)
@@ -56,30 +44,58 @@ func (ctl *ListsController) Index(c *gin.Context) {
 		return
 	}
 
-	// attach the user id to the request
-	req.UserId = userId
-
 	// get the data
-	word, err := ctl.repository.Index(req)
+	lists, err := ctl.repository.AdminIndex(req)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
 	}
 
+	// make a temporary variable to copy the result then export via gin
+	listsToExport := make([]model.ListModel, 0)
+	userIds := []uint64{}
+	usersMap := make(map[uint64]model.UserModel)
+
+	// check if len is zero
+	if len(lists) == 0 {
+		// send empty response
+		c.JSON(200, gin.H{
+			"data": listsToExport,
+			"meta": req,
+		})
+		return
+	}
+
+	for _, list := range lists {
+		userIds = append(userIds, list.UserId)
+	}
+
+	// get the users
+	users, _ := ctl.userRepo.In(userIds)
+	// map the users to user map to avoid second level iteration
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	// now attach the users to the folders result
+	for _, list := range lists {
+		user := usersMap[list.UserId]
+		f := model.ListModel(list)
+		f.User = &user
+
+		listsToExport = append(listsToExport, f)
+
+	}
+
 	c.JSON(200, gin.H{
-		"data": word,
+		"data": listsToExport,
 		"meta": req,
 	})
 
 }
 
-func (ctl *ListsController) Create(c *gin.Context) {
-	userId,err := utils.GetUserId(c)
-
-	if err != nil {
-		return
-	}
+func (ctl *AdminListsController) Create(c *gin.Context) {
 	// request validation
 	req, err := requests.ListsCreateRequest(c)
 
@@ -88,8 +104,7 @@ func (ctl *ListsController) Create(c *gin.Context) {
 		return
 	}
 
-	// set the user id
-	req.UserId = userId
+	fmt.Println(req)
 
 	// now create the record
 	listMeta, err := ctl.repository.Create(req)
@@ -108,32 +123,18 @@ func (ctl *ListsController) Create(c *gin.Context) {
 	})
 }
 
-func (ctl *ListsController) FindOne(c *gin.Context) {
+func (ctl *AdminListsController) FindOne(c *gin.Context) {
 
-	// validate the given slug
-	slug := c.Param("slug")
-
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
-		return
-	}
-
-	userIdString := c.GetString("user_id")
-
-	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
-		return
-	}
-
-	userId, err := strconv.ParseUint(userIdString, 10, 64)
+	// get the folder id
+	Id, err := utils.ParseParamToUint64(c, "id")
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		utils.Errorf(err)
 		return
 	}
 
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(Id)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
@@ -142,12 +143,6 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-		return
-	}
-
-	// check permissions and visibility
-	if userId != list.UserId && enums.ListVisibilityPublic != list.Visibility {
-		c.JSON(http.StatusForbidden, gin.H{"errors": "The list either not public or deleted."})
 		return
 	}
 
@@ -173,39 +168,25 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"list_meta": list,
-		"words":     words,
-		"meta":      req,
+		"list":  list,
+		"words": words,
+		"meta":  req,
 	})
 
 }
 
-func (ctl *ListsController) Update(c *gin.Context) {
+func (ctl *AdminListsController) Update(c *gin.Context) {
 
-	// validate the given slug
-	slug := c.Param("slug")
-
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
-		return
-	}
-
-	userIdString := c.GetString("user_id")
-
-	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
-		return
-	}
-
-	userId, err := strconv.ParseUint(userIdString, 10, 64)
+	// get the list id
+	Id, err := utils.ParseParamToUint64(c, "id")
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		utils.Errorf(err)
 		return
 	}
 
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(Id)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
@@ -214,12 +195,6 @@ func (ctl *ListsController) Update(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-		return
-	}
-
-	// check permissions and visibility
-	if userId != list.UserId {
-		c.JSON(http.StatusForbidden, gin.H{"errors": "Unauthorized."})
 		return
 	}
 
@@ -234,47 +209,32 @@ func (ctl *ListsController) Update(c *gin.Context) {
 		return
 	}
 
-	if req.Name != list.Name {
-		// update the data
-		ok, err := ctl.repository.Update(list.Id, req)
-		if err != nil || !ok {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-			return
-		}
+	ok, err := ctl.repository.Update(list.Id, req)
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
 	}
 
-	c.JSON(http.StatusNoContent, gin.H{
-		"updated": true,
+	updatedData, _ := ctl.repository.FindOne(Id)
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": updatedData,
 	})
 
 }
 
-func (ctl *ListsController) Delete(c *gin.Context) {
+func (ctl *AdminListsController) Delete(c *gin.Context) {
 
-	// validate the given slug
-	slug := c.Param("slug")
-
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
-		return
-	}
-
-	userIdString := c.GetString("user_id")
-
-	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
-		return
-	}
-
-	userId, err := strconv.ParseUint(userIdString, 10, 64)
+	// get the list id
+	Id, err := utils.ParseParamToUint64(c, "id")
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		utils.Errorf(err)
 		return
 	}
 
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(Id)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
@@ -283,12 +243,6 @@ func (ctl *ListsController) Delete(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-		return
-	}
-
-	// check permissions and visibility
-	if userId != list.UserId {
-		c.JSON(http.StatusForbidden, gin.H{"errors": "Unauthorized."})
 		return
 	}
 
@@ -324,39 +278,24 @@ func (ctl *ListsController) Delete(c *gin.Context) {
 
 }
 
-func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
+func (ctl *AdminListsController) DeleteWordInList(c *gin.Context) {
 
-	// validate the given slug
-	slug := c.Param("slug")
-	wordIdTemp := c.Query("word_id")
+	// get the list id
+	Id, err := utils.ParseParamToUint64(c, "id")
 
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+	if err != nil {
+		utils.Errorf(err)
 		return
 	}
+
+	wordIdTemp := c.Query("word_id")
 	if wordIdTemp == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param word id"})
 		return
 	}
 
-
-
-	userIdString := c.GetString("user_id")
-
-	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
-		return
-	}
-
-	userId, err := strconv.ParseUint(userIdString, 10, 64)
-
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
-		return
-	}
-
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(Id)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
@@ -365,12 +304,6 @@ func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-		return
-	}
-
-	// check permissions and visibility
-	if userId != list.UserId {
-		c.JSON(http.StatusForbidden, gin.H{"errors": "Unauthorized."})
 		return
 	}
 

@@ -26,7 +26,11 @@ func NewFolderController(repository repository.FolderRepositoryInterface, listRe
 }
 
 func (ctl *FolderController) Index(c *gin.Context) {
-	userId := utils.GetUserId(c)
+	userId,err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
 
 	fmt.Println(userId)
 
@@ -53,7 +57,11 @@ func (ctl *FolderController) Index(c *gin.Context) {
 }
 
 func (ctl *FolderController) Create(c *gin.Context) {
-	userId := utils.GetUserId(c)
+	userId,err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
 
 	fmt.Println(userId)
 
@@ -84,7 +92,11 @@ func (ctl *FolderController) Create(c *gin.Context) {
 
 func (ctl *FolderController) FindOne(c *gin.Context) {
 
-	userId := utils.GetUserId(c)
+	userId,err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
 
 	fmt.Println(userId)
 
@@ -147,7 +159,11 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 }
 
 func (ctl *FolderController) Update(c *gin.Context) {
-	userId := utils.GetUserId(c)
+	userId,err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
 
 	fmt.Println(userId)
 
@@ -215,7 +231,11 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 
 	fmt.Println(delete, deleteLists)
 
-	userId := utils.GetUserId(c)
+	userId,err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
 
 	fmt.Println(userId)
 
@@ -283,7 +303,11 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 
 func (ctl *FolderController) ToggleList(c *gin.Context) {
 
-	userId := utils.GetUserId(c)
+	userId,err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
 
 	fmt.Println(userId)
 
