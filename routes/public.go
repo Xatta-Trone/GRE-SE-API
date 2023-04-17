@@ -68,5 +68,9 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.POST("/saved-lists",listController.SaveListItem)
 	authRoutes.DELETE("/saved-lists/:list_id",listController.DeleteSavedList)
 
+	authRoutes.GET("/saved-folders",folderController.SavedFolders)
+	authRoutes.POST("/saved-folders/:folder_id",folderController.SaveFolder)
+	authRoutes.DELETE("/saved-folders/:folder_id",folderController.DeleteSaveFolder)
+
 	return r
 }

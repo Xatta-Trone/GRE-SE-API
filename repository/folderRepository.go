@@ -18,11 +18,14 @@ import (
 type FolderRepositoryInterface interface {
 	Index(req *requests.FolderIndexReqStruct) ([]model.FolderModel, error)
 	PublicIndex(req *requests.PublicFolderIndexReqStruct) ([]model.FolderModel, error)
+	SavedFolders(req *requests.SavedFolderIndexReqStruct) ([]model.FolderModel, error)
 	AdminIndex(req *requests.FolderIndexReqStruct) ([]model.FolderModel, error)
 	Create(req *requests.FolderCreateRequestStruct) (model.FolderModel, error)
+	SaveFolder(userId, folderId uint64) (bool, error)
 	FindOne(id uint64) (model.FolderModel, error)
 	Update(id uint64, req *requests.FolderUpdateRequestStruct) (bool, error)
 	Delete(folderId uint64, deleteLists bool) (bool, error)
+	DeleteSavedFolder(userId, folderId uint64) (bool, error)
 	ToggleList(folderId, listId uint64) (bool, error)
 }
 type FolderRepository struct {
@@ -71,6 +74,33 @@ func (rep *FolderRepository) PublicIndex(r *requests.PublicFolderIndexReqStruct)
 	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
 	query := fmt.Sprintf("SELECT folders.*, COUNT(folder_list_relation.list_id) AS lists_count FROM folders INNER JOIN folder_list_relation ON folder_list_relation.folder_id = folders.id where folders.name like :query and folders.visibility=:visibility GROUP BY folders.id order by %s %s limit :limit offset :offset",queryMap["orderby"], order)
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+	err = nstmt.Select(&models, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
+
+}
+
+func (rep *FolderRepository) SavedFolders(r *requests.SavedFolderIndexReqStruct) ([]model.FolderModel, error) {
+
+	models := []model.FolderModel{}
+
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "visibility": enums.FolderVisibilityPublic}
+
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	// I am using named execution to make it more clear
+	query := fmt.Sprintf("SELECT folders.*, COUNT(folder_list_relation.list_id) AS lists_count FROM folders INNER JOIN folder_list_relation ON folder_list_relation.folder_id = folders.id where folders.id IN (select folder_id from saved_folders where user_id=:user_id) and folders.name like :query GROUP BY folders.id order by %s %s limit :limit offset :offset",queryMap["orderby"], order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -167,6 +197,23 @@ func (rep *FolderRepository) Create(req *requests.FolderCreateRequestStruct) (mo
 	// now run a process to process these words
 
 	return newRecord, nil
+
+}
+
+func (rep *FolderRepository) SaveFolder(userId, folderId uint64) (bool, error) {
+
+
+	queryMap := map[string]interface{}{ "user_id": userId, "folder_id": folderId}
+
+	_, err := rep.Db.NamedExec("Insert ignore into saved_folders(user_id,folder_id) values(:user_id,:folder_id)", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+
+	return true, nil
 
 }
 
@@ -294,6 +341,39 @@ func (rep *FolderRepository) Delete(folderId uint64, deleteLists bool) (bool, er
 
 	// now delete the folder
 	query := "Delete FROM folders where id=:id"
+
+	res, err := rep.Db.NamedExec(query, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+
+	return true, nil
+
+}
+
+func (rep *FolderRepository) DeleteSavedFolder(userId, folderId uint64) (bool, error) {
+
+	queryMap := map[string]interface{}{"folder_id": folderId, "user_id": userId}
+
+	// now delete the folder
+	query := "Delete FROM saved_folders where folder_id=:folder_id and user_id=:user_id"
 
 	res, err := rep.Db.NamedExec(query, queryMap)
 

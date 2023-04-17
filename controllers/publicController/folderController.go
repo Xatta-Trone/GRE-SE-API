@@ -64,7 +64,7 @@ func (ctl *FolderController) Index(c *gin.Context) {
 }
 
 func (ctl *FolderController) PublicFolders(c *gin.Context) {
-	
+
 	req, errs := requests.PublicFolderIndexRequest(c)
 
 	if errs != nil {
@@ -99,7 +99,72 @@ func (ctl *FolderController) PublicFolders(c *gin.Context) {
 	}
 
 	// get the users
-	users, _ := ctl.userRepo.In(userIds,"id","username")
+	users, _ := ctl.userRepo.In(userIds, "id", "username")
+	// map the users to user map to avoid second level iteration
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	// now attach the users to the folders result
+	for _, folder := range folders {
+		user := usersMap[folder.UserId]
+		f := model.FolderModel(folder)
+		f.User = &user
+
+		foldersToExport = append(foldersToExport, f)
+
+	}
+
+	c.JSON(200, gin.H{
+		"data": foldersToExport,
+		"meta": req,
+	})
+}
+
+func (ctl *FolderController) SavedFolders(c *gin.Context) {
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
+
+	req, errs := requests.SavedFolderIndexRequest(c)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
+		return
+	}
+
+	req.UserId = userId
+
+	folders, err := ctl.repository.SavedFolders(req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// make a temporary variable to copy the result then export via gin
+	foldersToExport := make([]model.FolderModel, 0)
+	userIds := []uint64{}
+	usersMap := make(map[uint64]model.UserModel)
+
+	// check if len is zero
+	if len(folders) == 0 {
+		// send empty response
+		c.JSON(200, gin.H{
+			"data": foldersToExport,
+			"meta": req,
+		})
+		return
+	}
+
+	for _, list := range folders {
+		userIds = append(userIds, list.UserId)
+	}
+
+	// get the users
+	users, _ := ctl.userRepo.In(userIds, "id", "username")
 	// map the users to user map to avoid second level iteration
 	for _, user := range users {
 		usersMap[user.ID] = user
@@ -152,6 +217,32 @@ func (ctl *FolderController) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"data":    folder,
 		"message": "Folder created.",
+	})
+}
+
+func (ctl *FolderController) SaveFolder(c *gin.Context) {
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
+
+	folderId, err := utils.ParseParamToUint64(c, "folder_id")
+
+	if err != nil {
+		return
+	}
+
+	// now create the record
+	_, err = ctl.repository.SaveFolder(userId, folderId)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Folder Saved.",
 	})
 }
 
@@ -358,6 +449,37 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 			return
 		}
+	}
+
+	c.JSON(http.StatusNoContent, gin.H{
+		"deleted": true,
+	})
+
+}
+
+func (ctl *FolderController) DeleteSaveFolder(c *gin.Context) {
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
+
+	folderId, err := utils.ParseParamToUint64(c, "folder_id")
+
+	if err != nil {
+		return
+	}
+
+	ok, err := ctl.repository.DeleteSavedFolder(userId,folderId)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusNoContent, gin.H{
