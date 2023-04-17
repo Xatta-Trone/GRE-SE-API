@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/enums"
+	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/services"
@@ -18,13 +19,20 @@ type ListsController struct {
 	repository  repository.ListRepositoryInterface
 	listService services.ListProcessorServiceInterface
 	wordRepo    repository.WordRepositoryInterface
+	userRepo    repository.UserRepositoryInterface
 }
 
-func NewListsController(repository repository.ListRepositoryInterface, listService services.ListProcessorServiceInterface, wordRepo repository.WordRepositoryInterface) *ListsController {
+func NewListsController(
+	repository repository.ListRepositoryInterface, 
+	listService services.ListProcessorServiceInterface, 
+	wordRepo repository.WordRepositoryInterface,
+	userRepo repository.UserRepositoryInterface,
+	) *ListsController {
 	return &ListsController{
 		repository:  repository,
 		listService: listService,
 		wordRepo:    wordRepo,
+		userRepo:    userRepo,
 	}
 }
 
@@ -69,6 +77,70 @@ func (ctl *ListsController) Index(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"data": word,
+		"meta": req,
+	})
+
+}
+
+func (ctl *ListsController) PublicLists(c *gin.Context) {
+
+
+	// validation request
+	req, errs := requests.PublicListsIndexRequest(c)
+
+	// fmt.Println(req)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
+		return
+	}
+
+	// get the data
+	lists, err := ctl.repository.PublicIndex(req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// make a temporary variable to copy the result then export via gin
+	listsToExport := make([]model.ListModel, 0)
+	userIds := []uint64{}
+	usersMap := make(map[uint64]model.UserModel)
+
+	// check if len is zero
+	if len(lists) == 0 {
+		// send empty response
+		c.JSON(200, gin.H{
+			"data": listsToExport,
+			"meta": req,
+		})
+		return
+	}
+
+	for _, list := range lists {
+		userIds = append(userIds, list.UserId)
+	}
+
+	// get the users
+	users, _ := ctl.userRepo.In(userIds,"id","username")
+	// map the users to user map to avoid second level iteration
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	// now attach the users to the folders result
+	for _, list := range lists {
+		user := usersMap[list.UserId]
+		f := model.ListModel(list)
+		f.User = &user
+
+		listsToExport = append(listsToExport, f)
+
+	}
+
+	c.JSON(200, gin.H{
+		"data": listsToExport,
 		"meta": req,
 	})
 

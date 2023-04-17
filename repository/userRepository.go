@@ -14,7 +14,7 @@ import (
 
 type UserRepositoryInterface interface {
 	Index(req requests.UsersIndexReqStruct) ([]model.UserModel, error)
-	In(ids []uint64) ([]model.UserModel, error)
+	In(ids []uint64, columns ...string) ([]model.UserModel, error)
 	FindOne(id int) (model.UserModel, error)
 	FindOneByEmail(email string) (model.UserModel, error)
 	FindOneByUserName(username string) (model.UserModel, error)
@@ -59,11 +59,26 @@ func (rep *UserRepository) Index(r requests.UsersIndexReqStruct) ([]model.UserMo
 
 }
 
-func (rep *UserRepository) In(ids []uint64) ([]model.UserModel, error) {
+func (rep *UserRepository) In(ids []uint64, columns ...string) ([]model.UserModel, error) {
+
+	columnsToSelect := "*"
+
+	if len(columns) > 0 {
+		columnsToSelect = ""
+
+		for i, col := range columns {
+			if i == len(columns)-1 {
+				columnsToSelect += col
+			} else {
+				columnsToSelect += fmt.Sprintf("%s,", col)
+			}
+
+		}
+	}
 
 	models := []model.UserModel{}
 
-	query, args, err := sqlx.In("SELECT id,name,email,username,created_at,updated_at FROM users where id in (?)", ids)
+	query, args, err := sqlx.In(fmt.Sprintf("SELECT %s FROM users where id in (?)", columnsToSelect), ids)
 
 	if err != nil {
 		utils.Errorf(err)

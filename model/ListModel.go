@@ -12,8 +12,9 @@ type ListModel struct {
 	Status     int       `json:"status"`
 	CratedAt   time.Time `json:"crated_at" db:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
-	// relations 
-	User       *UserModel `json:"user,omitempty"` // for one2one relations
+	// relations
+	User      *UserModel `json:"user,omitempty"` // for one2one relations
+	WordCount *int       `json:"word_count,omitempty" db:"word_count"`
 }
 
 type ListMetaModel struct {
@@ -43,8 +44,8 @@ type FolderModel struct {
 	Status     int       `json:"status"`
 	CratedAt   time.Time `json:"crated_at" db:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
-	// relations 
-	User       *UserModel `json:"user,omitempty"` // for one2one relations
+	// relations
+	User *UserModel `json:"user,omitempty"` // for one2one relations
 }
 
 type FolderListRelationModel struct {

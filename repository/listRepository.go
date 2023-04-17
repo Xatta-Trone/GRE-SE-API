@@ -7,6 +7,7 @@ import (
 
 	"github.com/gosimple/slug"
 	"github.com/jmoiron/sqlx"
+	"github.com/xatta-trone/words-combinator/enums"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/utils"
@@ -15,6 +16,7 @@ import (
 type ListRepositoryInterface interface {
 	Create(req *requests.ListsCreateRequestStruct) (model.ListMetaModel, error)
 	Index(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
+	PublicIndex(req *requests.PublicListsIndexReqStruct) ([]model.ListModel, error)
 	AdminIndex(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
 	Update(id uint64, req *requests.ListsUpdateRequestStruct) (bool, error)
 	FindOneBySlug(slug string) (model.ListModel, error)
@@ -42,6 +44,36 @@ func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListM
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
 	query := fmt.Sprintf("SELECT id,name,slug,visibility,list_meta_id,status,created_at,updated_at FROM lists where name like :query and user_id = :user_id order by id %s limit :limit offset :offset", order)
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+	err = nstmt.Select(&models, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
+
+}
+
+func (rep *ListRepository) PublicIndex(r *requests.PublicListsIndexReqStruct) ([]model.ListModel, error) {
+
+	models := []model.ListModel{}
+
+	fmt.Println(*r)
+
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": "lists."+r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "visibility": enums.ListVisibilityPublic}
+
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+
+	query := fmt.Sprintf("SELECT lists.*, COUNT(list_word_relation.word_id) AS word_count FROM lists INNER JOIN list_word_relation ON list_word_relation.list_id = lists.id where lists.name like :query and lists.visibility=:visibility GROUP BY lists.id order by %s %s limit :limit offset :offset",queryMap["orderby"], order)
+
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
