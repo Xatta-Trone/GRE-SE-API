@@ -7,3 +7,4 @@
 7. user public profile
 
 
+INSERT INTO words(word,created_at) SELECT :word, now() WHERE NOT EXISTS (SELECT word FROM words WHERE word = :word)

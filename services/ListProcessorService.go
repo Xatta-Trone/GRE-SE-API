@@ -521,8 +521,15 @@ func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta m
 
 	if folderIdToInsert != 0 {
 		// create the folder list relation
-		queryMapForListFolderRelation := map[string]interface{}{"list_id": lastId, "folder_id": folderIdToInsert}
+		queryMapForListFolderRelation := map[string]interface{}{"list_id": lastId, "folder_id": folderIdToInsert, "user_id": listMeta.UserId}
 		_, err = listService.db.NamedExec("Insert into folder_list_relation(folder_id,list_id) values(:folder_id,:list_id)", queryMapForListFolderRelation)
+		if err != nil {
+			utils.Errorf(err)
+			utils.PrintR("there was an error creating list folder relation \n")
+
+		}
+		// insert into saved lists
+		_, err = listService.db.NamedExec("Insert into saved_lists(user_id,list_id) values(:user_id,:list_id)", queryMapForListFolderRelation)
 		if err != nil {
 			utils.Errorf(err)
 			utils.PrintR("there was an error creating list folder relation \n")
@@ -569,6 +576,19 @@ func (listService *ListProcessorService) CreateFolderFromListMeta(listMeta model
 
 	if lastId == 0 {
 		return -1, fmt.Errorf("there was a problem with the insertion. last id: %d", lastId)
+	}
+
+	if lastId != 0 {
+		// create the folder list relation
+		queryMapForListFolderRelation := map[string]interface{}{"folder_id": lastId, "user_id": listMeta.UserId}
+		// insert into saved folders
+		_, err = listService.db.NamedExec("Insert into saved_folders(user_id,folder_id) values(:user_id,:folder_id)", queryMapForListFolderRelation)
+		if err != nil {
+			utils.Errorf(err)
+			utils.PrintR("there was an error creating list folder relation \n")
+
+		}
+
 	}
 
 	return lastId, nil

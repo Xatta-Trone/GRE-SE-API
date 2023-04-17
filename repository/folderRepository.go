@@ -144,6 +144,19 @@ func (rep *FolderRepository) Create(req *requests.FolderCreateRequestStruct) (mo
 		return newRecord, fmt.Errorf("there was a problem with the insertion. last id: %d", lastId)
 	}
 
+	if lastId != 0 {
+		// create the folder list relation
+		queryMapForListFolderRelation := map[string]interface{}{"folder_id": lastId, "user_id": req.UserId}
+		// insert into saved folders
+		_, err = rep.Db.NamedExec("Insert into saved_folders(user_id,folder_id) values(:user_id,:folder_id)", queryMapForListFolderRelation)
+		if err != nil {
+			utils.Errorf(err)
+			utils.PrintR("there was an error creating list folder relation \n")
+
+		}
+
+	}
+
 	newRecord, err = rep.FindOne(uint64(lastId))
 
 	if err != nil {
