@@ -23,11 +23,11 @@ type ListsController struct {
 }
 
 func NewListsController(
-	repository repository.ListRepositoryInterface, 
-	listService services.ListProcessorServiceInterface, 
+	repository repository.ListRepositoryInterface,
+	listService services.ListProcessorServiceInterface,
 	wordRepo repository.WordRepositoryInterface,
 	userRepo repository.UserRepositoryInterface,
-	) *ListsController {
+) *ListsController {
 	return &ListsController{
 		repository:  repository,
 		listService: listService,
@@ -46,7 +46,7 @@ func (ctl *ListsController) ListsByUserId(c *gin.Context) {
 
 func (ctl *ListsController) Index(c *gin.Context) {
 
-	userId,err := utils.GetUserId(c)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
@@ -83,7 +83,6 @@ func (ctl *ListsController) Index(c *gin.Context) {
 }
 
 func (ctl *ListsController) PublicLists(c *gin.Context) {
-
 
 	// validation request
 	req, errs := requests.PublicListsIndexRequest(c)
@@ -123,7 +122,78 @@ func (ctl *ListsController) PublicLists(c *gin.Context) {
 	}
 
 	// get the users
-	users, _ := ctl.userRepo.In(userIds,"id","username")
+	users, _ := ctl.userRepo.In(userIds, "id", "username")
+	// map the users to user map to avoid second level iteration
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	// now attach the users to the folders result
+	for _, list := range lists {
+		user := usersMap[list.UserId]
+		f := model.ListModel(list)
+		f.User = &user
+
+		listsToExport = append(listsToExport, f)
+
+	}
+
+	c.JSON(200, gin.H{
+		"data": listsToExport,
+		"meta": req,
+	})
+
+}
+
+func (ctl *ListsController) SavedLists(c *gin.Context) {
+
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
+
+	// validation request
+	req, errs := requests.SavedListsIndexRequest(c)
+
+	// fmt.Println(req)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
+		return
+	}
+
+	req.UserId = userId
+
+	// get the data
+	lists, err := ctl.repository.SavedLists(req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// make a temporary variable to copy the result then export via gin
+	listsToExport := make([]model.ListModel, 0)
+	userIds := []uint64{}
+	usersMap := make(map[uint64]model.UserModel)
+
+	// check if len is zero
+	if len(lists) == 0 {
+		// send empty response
+		c.JSON(200, gin.H{
+			"data": listsToExport,
+			"meta": req,
+		})
+		return
+	}
+
+	for _, list := range lists {
+		userIds = append(userIds, list.UserId)
+	}
+
+	// get the users
+	users, _ := ctl.userRepo.In(userIds, "id", "username")
 	// map the users to user map to avoid second level iteration
 	for _, user := range users {
 		usersMap[user.ID] = user
@@ -147,7 +217,7 @@ func (ctl *ListsController) PublicLists(c *gin.Context) {
 }
 
 func (ctl *ListsController) Create(c *gin.Context) {
-	userId,err := utils.GetUserId(c)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
@@ -177,6 +247,36 @@ func (ctl *ListsController) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"data":    listMeta,
 		"message": "Your list has been created. You will get a notification after processing the list shortly.",
+	})
+}
+
+func (ctl *ListsController) SaveListItem(c *gin.Context) {
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
+	// request validation
+	req, err := requests.SavedListsCreateRequest(c)
+
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err})
+		return
+	}
+
+	// set the user id
+	req.UserId = userId
+
+	// now create the record
+	_, err = ctl.repository.SaveListItem(req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Your list has been saved.",
 	})
 }
 
@@ -396,6 +496,38 @@ func (ctl *ListsController) Delete(c *gin.Context) {
 
 }
 
+func (ctl *ListsController) DeleteSavedList(c *gin.Context) {
+
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
+
+	listId, err := utils.ParseParamToUint64(c, "list_id")
+
+	if err != nil {
+		return
+	}
+
+	ok, err := ctl.repository.DeleteFromSavedList(userId,listId)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, gin.H{
+		"deleted": true,
+	})
+
+}
+
 func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 
 	// validate the given slug
@@ -410,8 +542,6 @@ func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param word id"})
 		return
 	}
-
-
 
 	userIdString := c.GetString("user_id")
 

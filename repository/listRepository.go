@@ -15,14 +15,17 @@ import (
 
 type ListRepositoryInterface interface {
 	Create(req *requests.ListsCreateRequestStruct) (model.ListMetaModel, error)
+	SaveListItem(req *requests.SavedListsCreateRequestStruct) (bool, error)
 	Index(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
 	PublicIndex(req *requests.PublicListsIndexReqStruct) ([]model.ListModel, error)
+	SavedLists(req *requests.SavedListsIndexReqStruct) ([]model.ListModel, error)
 	AdminIndex(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
 	Update(id uint64, req *requests.ListsUpdateRequestStruct) (bool, error)
 	FindOneBySlug(slug string) (model.ListModel, error)
 	FindOne(id uint64) (model.ListModel, error)
 	DeleteFromListMeta(listMetaId uint64) (bool, error)
 	Delete(listMetaId uint64) (bool, error)
+	DeleteFromSavedList(userId,listId uint64) (bool, error)
 	DeleteWordInList(wordId, listId uint64) (bool, error)
 	ListsByFolderId(req *requests.FolderListIndexReqStruct) ([]model.ListModel, error)
 }
@@ -73,6 +76,36 @@ func (rep *ListRepository) PublicIndex(r *requests.PublicListsIndexReqStruct) ([
 	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 
 	query := fmt.Sprintf("SELECT lists.*, COUNT(list_word_relation.word_id) AS word_count FROM lists INNER JOIN list_word_relation ON list_word_relation.list_id = lists.id where lists.name like :query and lists.visibility=:visibility GROUP BY lists.id order by %s %s limit :limit offset :offset",queryMap["orderby"], order)
+
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+	err = nstmt.Select(&models, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
+
+}
+
+func (rep *ListRepository) SavedLists(r *requests.SavedListsIndexReqStruct) ([]model.ListModel, error) {
+
+	models := []model.ListModel{}
+
+	fmt.Println(*r)
+
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": "lists."+r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "visibility": enums.ListVisibilityPublic}
+
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+
+	query := fmt.Sprintf("SELECT lists.*, COUNT(list_word_relation.word_id) AS word_count FROM lists INNER JOIN list_word_relation ON list_word_relation.list_id = lists.id where lists.id IN (select saved_lists.list_id from saved_lists where saved_lists.user_id = :user_id) and lists.name like :query GROUP BY lists.id order by %s %s limit :limit offset :offset",queryMap["orderby"], order)
 
 
 	nstmt, err := rep.Db.PrepareNamed(query)
@@ -180,6 +213,22 @@ func (rep *ListRepository) Create(req *requests.ListsCreateRequestStruct) (model
 	// now run a process to process these words
 
 	return newRecord, nil
+
+}
+
+func (rep *ListRepository) SaveListItem(req *requests.SavedListsCreateRequestStruct) (bool, error) {
+
+	queryMap := map[string]interface{}{"user_id": req.UserId,"list_id": req.ListId}
+
+	_, err := rep.Db.NamedExec("Insert ignore into saved_lists(user_id,list_id) values(:user_id,:list_id)", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+
+	return true, nil
 
 }
 
@@ -351,6 +400,38 @@ func (rep *ListRepository) Delete(listId uint64) (bool, error) {
 	queryMap := map[string]interface{}{"id": listId}
 
 	query := "Delete FROM lists where id=:id"
+
+	res, err := rep.Db.NamedExec(query, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+
+	return true, nil
+
+}
+
+func (rep *ListRepository) DeleteFromSavedList(userId, listId uint64) (bool, error) {
+
+	queryMap := map[string]interface{}{"list_id": listId, "user_id": userId}
+
+	query := "Delete FROM saved_lists where list_id=:list_id and user_id=:user_id"
 
 	res, err := rep.Db.NamedExec(query, queryMap)
 
