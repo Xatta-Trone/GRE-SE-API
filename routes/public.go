@@ -30,6 +30,10 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	public.POST("/register", authController.Register)
 	public.POST("login", authController.Login)
 
+	// public lists 
+	public.GET("/public-lists",listController.PublicLists)
+	public.GET("/public-folders",folderController.PublicFolders)
+
 	// public.GET("@:name", func(ctx *gin.Context) {
 	// 	name := ctx.Param("name")
 	// 	ctx.JSON(200, gin.H{"name": name})
@@ -59,9 +63,10 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.DELETE("/folders/:id",folderController.Delete)
 	authRoutes.POST("/folders/:id/toggle-list",folderController.ToggleList)
 
-	// public lists 
-	public.GET("/public-lists",listController.PublicLists)
-	public.GET("/public-folders",folderController.PublicFolders)
+	// saved items 
+	// authRoutes.GET("/saved-lists")
+
+	
 
 
 	return r
