@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/enums"
+	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/utils"
@@ -15,18 +16,24 @@ import (
 type FolderController struct {
 	repository     repository.FolderRepositoryInterface
 	listRepository repository.ListRepositoryInterface
+	userRepo       repository.UserRepositoryInterface
 }
 
-func NewFolderController(repository repository.FolderRepositoryInterface, listRepository repository.ListRepositoryInterface) *FolderController {
+func NewFolderController(
+	repository repository.FolderRepositoryInterface,
+	listRepository repository.ListRepositoryInterface,
+	userRepo repository.UserRepositoryInterface,
+) *FolderController {
 	return &FolderController{
 		repository:     repository,
 		listRepository: listRepository,
+		userRepo:       userRepo,
 	}
 
 }
 
 func (ctl *FolderController) Index(c *gin.Context) {
-	userId,err := utils.GetUserId(c)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
@@ -56,8 +63,66 @@ func (ctl *FolderController) Index(c *gin.Context) {
 	})
 }
 
+func (ctl *FolderController) PublicFolders(c *gin.Context) {
+	
+	req, errs := requests.PublicFolderIndexRequest(c)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
+		return
+	}
+
+	folders, err := ctl.repository.PublicIndex(req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// make a temporary variable to copy the result then export via gin
+	foldersToExport := make([]model.FolderModel, 0)
+	userIds := []uint64{}
+	usersMap := make(map[uint64]model.UserModel)
+
+	// check if len is zero
+	if len(folders) == 0 {
+		// send empty response
+		c.JSON(200, gin.H{
+			"data": foldersToExport,
+			"meta": req,
+		})
+		return
+	}
+
+	for _, list := range folders {
+		userIds = append(userIds, list.UserId)
+	}
+
+	// get the users
+	users, _ := ctl.userRepo.In(userIds,"id","username")
+	// map the users to user map to avoid second level iteration
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	// now attach the users to the folders result
+	for _, folder := range folders {
+		user := usersMap[folder.UserId]
+		f := model.FolderModel(folder)
+		f.User = &user
+
+		foldersToExport = append(foldersToExport, f)
+
+	}
+
+	c.JSON(200, gin.H{
+		"data": foldersToExport,
+		"meta": req,
+	})
+}
+
 func (ctl *FolderController) Create(c *gin.Context) {
-	userId,err := utils.GetUserId(c)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
@@ -92,7 +157,7 @@ func (ctl *FolderController) Create(c *gin.Context) {
 
 func (ctl *FolderController) FindOne(c *gin.Context) {
 
-	userId,err := utils.GetUserId(c)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
@@ -159,7 +224,7 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 }
 
 func (ctl *FolderController) Update(c *gin.Context) {
-	userId,err := utils.GetUserId(c)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
@@ -231,7 +296,7 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 
 	fmt.Println(delete, deleteLists)
 
-	userId,err := utils.GetUserId(c)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
@@ -303,7 +368,7 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 
 func (ctl *FolderController) ToggleList(c *gin.Context) {
 
-	userId,err := utils.GetUserId(c)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return

@@ -46,6 +46,7 @@ type FolderModel struct {
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
 	// relations
 	User *UserModel `json:"user,omitempty"` // for one2one relations
+	ListsCount *int `json:"lists_count,omitempty" db:"lists_count"`
 }
 
 type FolderListRelationModel struct {

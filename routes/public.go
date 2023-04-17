@@ -23,7 +23,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 
 	// folders 
 	folderRepo := repository.NewFolderRepository(database.Gdb)
-	folderController := publicController.NewFolderController(folderRepo,listRepo)
+	folderController := publicController.NewFolderController(folderRepo,listRepo,userRepo)
 
 	public := r.Group("/")
 
@@ -61,6 +61,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 
 	// public lists 
 	public.GET("/public-lists",listController.PublicLists)
+	public.GET("/public-folders",folderController.PublicFolders)
 
 
 	return r

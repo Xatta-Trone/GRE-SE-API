@@ -9,6 +9,7 @@ import (
 
 	"github.com/gosimple/slug"
 	"github.com/jmoiron/sqlx"
+	"github.com/xatta-trone/words-combinator/enums"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/utils"
@@ -16,6 +17,7 @@ import (
 
 type FolderRepositoryInterface interface {
 	Index(req *requests.FolderIndexReqStruct) ([]model.FolderModel, error)
+	PublicIndex(req *requests.PublicFolderIndexReqStruct) ([]model.FolderModel, error)
 	AdminIndex(req *requests.FolderIndexReqStruct) ([]model.FolderModel, error)
 	Create(req *requests.FolderCreateRequestStruct) (model.FolderModel, error)
 	FindOne(id uint64) (model.FolderModel, error)
@@ -42,6 +44,33 @@ func (rep *FolderRepository) Index(r *requests.FolderIndexReqStruct) ([]model.Fo
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
 	query := fmt.Sprintf("SELECT * FROM folders where name like :query and user_id = nullif(:user_id,0) order by id %s limit :limit offset :offset", order)
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+	err = nstmt.Select(&models, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
+
+}
+
+func (rep *FolderRepository) PublicIndex(r *requests.PublicFolderIndexReqStruct) ([]model.FolderModel, error) {
+
+	models := []model.FolderModel{}
+
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "visibility": enums.FolderVisibilityPublic}
+
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	// I am using named execution to make it more clear
+	query := fmt.Sprintf("SELECT folders.*, COUNT(folder_list_relation.list_id) AS lists_count FROM folders INNER JOIN folder_list_relation ON folder_list_relation.folder_id = folders.id where folders.name like :query and folders.visibility=:visibility GROUP BY folders.id order by %s %s limit :limit offset :offset",queryMap["orderby"], order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -295,7 +324,7 @@ func (rep *FolderRepository) ToggleList(folderId, listId uint64) (bool, error) {
 	}
 	err = nstmt.Get(&modelx, queryMap)
 
-	fmt.Println(modelx,err)
+	fmt.Println(modelx, err)
 
 	if err == sql.ErrNoRows {
 		// insert the record
