@@ -1,6 +1,9 @@
 package routes
 
 import (
+	"net/http"
+	"os"
+
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/controllers"
 	"github.com/xatta-trone/words-combinator/database"
@@ -8,6 +11,10 @@ import (
 	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/services"
 )
+
+type AdminPass struct {
+	Password string `form:"password"`
+}
 
 func AdminRoutes(r *gin.Engine) *gin.Engine {
 	// init services
@@ -36,15 +43,69 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 
 	admin.Use(middlewares.SetAdminScope())
 
-	admin.GET("/login", func(c *gin.Context) {
-		token, _ := services.GenerateToken("dummy")
+	admin.POST("/login", func(c *gin.Context) {
 
-		c.JSON(200, gin.H{
-			"message": token,
+		// get the key
+		password := os.Getenv("ADMIN_PASS")
+
+		if password == "" {
+			panic("ADMIN_PASS not found")
+		}
+
+		var admin AdminPass
+
+		if c.ShouldBind(&admin) == nil {
+			if admin.Password == "" {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error": "Password required",
+				})
+				return
+			}
+
+			if admin.Password != password {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error": "Password invalid.",
+				})
+				return
+
+			} else {
+				token, _ := services.GenerateToken("admin")
+				c.JSON(http.StatusOK, gin.H{
+					"token": token,
+				})
+				return
+
+			}
+
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "something went wrong.",
 		})
 	})
 
 	auth := admin.Use(middlewares.AuthMiddleware())
+
+	// admin profile
+	auth.GET("/me", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"data": map[string]any{
+				"id":    1,
+				"name":  "Monzurul Islam",
+				"email": "monzurul.ce.buet@gmail.com",
+			},
+		})
+	})
+
+	auth.POST("/logout", func(c *gin.Context) {
+		c.JSON(http.StatusNoContent, gin.H{
+			"data": map[string]any{
+				"id":    1,
+				"name":  "Monzurul Islam",
+				"email": "monzurul.ce.buet@gmail.com",
+			},
+		})
+	})
 
 	// words
 	auth.GET("words", wordController.WordIndex)
