@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gookit/validate"
 	"github.com/joho/godotenv"
@@ -43,6 +44,11 @@ func main() {
 	// http
 	gin.ForceConsoleColor()
 	r := gin.Default()
+	config := cors.DefaultConfig()
+	config.AllowHeaders = append(config.AllowHeaders, "Authorization")
+	config.AllowAllOrigins = true
+	r.Use(cors.New(config))
+
 	r.MaxMultipartMemory = 8 << 20 // 8 MiB
 	routes.Init(r)
 
@@ -54,7 +60,6 @@ func main() {
 	} else {
 		URL = ":" + PORT
 	}
-
 	r.Run(URL) // listen and serve on 0.0.0.0:8080
 
 	// GetChatGpt()

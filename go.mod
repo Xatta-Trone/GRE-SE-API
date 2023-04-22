@@ -38,6 +38,7 @@ require (
 	github.com/chromedp/chromedp v0.9.1 // indirect
 	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/geziyor/geziyor v0.0.0-20230315135110-a242b58aaa65 // indirect
+	github.com/gin-contrib/cors v1.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
