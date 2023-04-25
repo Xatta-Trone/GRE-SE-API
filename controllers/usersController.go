@@ -31,12 +31,14 @@ func (ctl *UsersController) Index(c *gin.Context) {
 	}
 
 	// get the data
-	word, err := ctl.repository.Index(req)
+	word,count, err := ctl.repository.Index(req)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
 	}
+
+	req.Count = count.Count
 
 	c.JSON(200, gin.H{
 		"data": word,
