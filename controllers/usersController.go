@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/repository"
@@ -122,6 +123,17 @@ func (ctl *UsersController) Create(c *gin.Context) {
 	// save the record
 	user, err := ctl.repository.Create(req)
 
+	if err != nil && strings.Contains(err.Error(), "key 'users.email'") {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": map[string]string{"email":"The email has already been taken."} })
+		return
+	}
+
+	if err != nil && strings.Contains(err.Error(), "key 'users.username'") {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": map[string]string{"username":"The username has already been taken."} })
+		return
+	}
+
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
@@ -167,7 +179,7 @@ func (ctl *UsersController) Update(c *gin.Context) {
 	req, errs := requests.UsersUpdateRequest(c)
 
 	if errs != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs.Error()})
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
 		return
 	}
 
@@ -177,6 +189,16 @@ func (ctl *UsersController) Update(c *gin.Context) {
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil && strings.Contains(err.Error(), "key 'users.username'") {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": map[string]string{"username":"The username has already been taken."} })
+		return
+	}
+
+	if err != nil && strings.Contains(err.Error(), "key 'users.email'") {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": map[string]string{"email":"The email has already been taken."} })
 		return
 	}
 

@@ -19,7 +19,7 @@ type FolderRepositoryInterface interface {
 	Index(req *requests.FolderIndexReqStruct) ([]model.FolderModel, error)
 	PublicIndex(req *requests.PublicFolderIndexReqStruct) ([]model.FolderModel, error)
 	SavedFolders(req *requests.SavedFolderIndexReqStruct) ([]model.FolderModel, error)
-	AdminIndex(req *requests.FolderIndexReqStruct) ([]model.FolderModel, error)
+	AdminIndex(req *requests.FolderIndexReqStruct) ([]model.FolderModel,model.CountModel, error)
 	Create(req *requests.FolderCreateRequestStruct) (model.FolderModel, error)
 	SaveFolder(userId, folderId uint64) (bool, error)
 	FindOne(id uint64) (model.FolderModel, error)
@@ -119,32 +119,41 @@ func (rep *FolderRepository) SavedFolders(r *requests.SavedFolderIndexReqStruct)
 
 }
 
-func (rep *FolderRepository) AdminIndex(r *requests.FolderIndexReqStruct) ([]model.FolderModel, error) {
+func (rep *FolderRepository) AdminIndex(r *requests.FolderIndexReqStruct) ([]model.FolderModel, model.CountModel, error) {
 
 	models := []model.FolderModel{}
+	count := model.CountModel{}
 
 	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
 
 	fmt.Println(r.UserId)
 
-	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT folders.* FROM folders INNER JOIN users on folders.user_id = users.id where folders.name like :query or users.name like :query or users.email like :query or users.username like :query order by folders.id %s limit :limit offset :offset", order)
+	searchString := "FROM folders INNER JOIN users on folders.user_id = users.id where folders.name like :query or users.name like :query or users.email like :query or users.username like :query"
+
+
+	query := fmt.Sprintf("SELECT folders.* %s order by folders.id %s limit :limit offset :offset",searchString, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
 	if err != nil {
 		utils.Errorf(err)
-		return models, err
+		return models,count, err
 	}
 	err = nstmt.Select(&models, queryMap)
 
 	if err != nil {
 		utils.Errorf(err)
-		return models, err
+		return models,count, err
 	}
 
-	return models, nil
+	// get the counts
+	queryCount := fmt.Sprintf("SELECT count(folders.id) as count %s limit 1", searchString)
+	nstmt1, _ := rep.Db.PrepareNamed(queryCount)
+	_ = nstmt1.Get(&count, queryMap)
+
+	return models,count, nil
 
 }
 

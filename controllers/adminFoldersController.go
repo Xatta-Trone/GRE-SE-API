@@ -36,7 +36,9 @@ func (ctl *AdminFolderController) Index(c *gin.Context) {
 	}
 
 	// get the folder records
-	folders, err := ctl.repository.AdminIndex(req)
+	folders,count, err := ctl.repository.AdminIndex(req)
+
+	req.Count = count.Count
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
