@@ -22,7 +22,7 @@ func ParseParamToUint64(c *gin.Context, param string) (uint64,error) {
 	Uint64Value, err = strconv.ParseUint(stringValue, 10, 64)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("could not parse %s", param)})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"errors": fmt.Sprintf("could not parse %s", param)})
 		return Uint64Value,errors.New(fmt.Sprintf("could not parse %s", param))
 	}
 
@@ -41,7 +41,7 @@ func ParseQueryToUint64(c *gin.Context, param string) uint64 {
 	Uint64Value, err := strconv.ParseUint(stringValue, 10, 64)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("could not parse %s", param)})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"errors": fmt.Sprintf("could not parse %s", param)})
 		return Uint64Value
 	}
 

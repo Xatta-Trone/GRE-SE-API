@@ -293,14 +293,14 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 	userIdString := c.GetString("user_id")
 
 	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "user id not found"})
 		return
 	}
 
 	userId, err := strconv.ParseUint(userIdString, 10, 64)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
 		return
 	}
 
@@ -365,14 +365,14 @@ func (ctl *ListsController) Update(c *gin.Context) {
 	userIdString := c.GetString("user_id")
 
 	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "user id not found"})
 		return
 	}
 
 	userId, err := strconv.ParseUint(userIdString, 10, 64)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
 		return
 	}
 
@@ -434,14 +434,14 @@ func (ctl *ListsController) Delete(c *gin.Context) {
 	userIdString := c.GetString("user_id")
 
 	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "user id not found"})
 		return
 	}
 
 	userId, err := strconv.ParseUint(userIdString, 10, 64)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
 		return
 	}
 
@@ -546,14 +546,14 @@ func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 	userIdString := c.GetString("user_id")
 
 	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "user id not found"})
 		return
 	}
 
 	userId, err := strconv.ParseUint(userIdString, 10, 64)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
 		return
 	}
 

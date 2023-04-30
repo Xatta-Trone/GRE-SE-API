@@ -15,14 +15,14 @@ func GetUserId(c *gin.Context) (uint64,error) {
 	userIdString := c.GetString("user_id")
 
 	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user id not found"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "user id not found"})
 		return userId,errors.New("user id not found")
 	}
 
 	userId, errs := strconv.ParseUint(userIdString, 10, 64)
 
 	if errs != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "could not parse the user id"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
 		return userId,errors.New("could not parse the user id")
 	}
 

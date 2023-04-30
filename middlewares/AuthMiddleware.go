@@ -37,7 +37,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// fmt.Println(token)
 
 		if token == "" {
-			c.AbortWithStatusJSON(401, gin.H{"error": "token missing"})
+			c.AbortWithStatusJSON(401, gin.H{"errors": "token missing"})
 			return
 		}
 
@@ -57,7 +57,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		err := paseto.NewV2().Decrypt(token, symmetricKey, &newJsonToken, &newFooter)
 
 		if err != nil {
-			c.AbortWithStatusJSON(401, gin.H{"error": "token mismatch"})
+			c.AbortWithStatusJSON(401, gin.H{"errors": "token mismatch"})
 			return
 		}
 
@@ -66,7 +66,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenExpired := newJsonToken.Expiration.Before(time.Now())
 
 		if tokenExpired {
-			c.AbortWithStatusJSON(401, gin.H{"error": "token expired. Please login again"})
+			c.AbortWithStatusJSON(401, gin.H{"errors": "token expired. Please login again"})
 			return
 		}
 

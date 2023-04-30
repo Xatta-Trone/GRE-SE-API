@@ -57,14 +57,14 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 		if c.ShouldBind(&admin) == nil {
 			if admin.Password == "" {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-					"error": "Password required",
+					"errors": "Password required",
 				})
 				return
 			}
 
 			if admin.Password != password {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-					"error": "Password invalid.",
+					"errors": "Password invalid.",
 				})
 				return
 
@@ -80,7 +80,7 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 		}
 
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "something went wrong.",
+			"errors": "something went wrong.",
 		})
 	})
 
