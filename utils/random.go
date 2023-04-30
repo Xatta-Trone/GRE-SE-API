@@ -2,7 +2,7 @@ package utils
 
 import (
 	"encoding/base64"
-	"math/rand"
+	"crypto/rand"
 )
 
 // GenerateRandomBytes returns securely generated random bytes.
