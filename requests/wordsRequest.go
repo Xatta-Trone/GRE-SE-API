@@ -1,36 +1,49 @@
 package requests
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
-	"github.com/gookit/validate"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 type WordIndexReqStruct struct {
-	ID      int    `form:"id,default=0" json:"id" validate:"integer" `
-	Query   string `form:"query" json:"query" validate:"-"`
-	OrderBy string `form:"order_by,default=desc" json:"order_by" validate:"in:asc,desc" `
-	Page    int    `form:"page,default=1" json:"page" validate:"required|integer" `
-	PerPage int    `form:"per_page,default=20" json:"per_page" validate:"required|integer" `
+	ID       int    `form:"id,default=0" json:"id"`
+	Query    string `form:"query" json:"query"`
+	OrderBy  string `form:"order_by,default=id" json:"order_by" `
+	Order    string `form:"order,default=0" json:"order" `
+	OrderDir string `form:"order_dir,default=desc" json:"order_dir" `
+	Page     int    `form:"page,default=1" json:"page"`
+	PerPage  int    `form:"per_page,default=20" json:"per_page"`
+	Count    int64  `form:"count" json:"count"`
 }
 
-func WordsIndexRequest(c *gin.Context) (WordIndexReqStruct, validate.Errors) {
+func (c WordIndexReqStruct) Validate() error {
+	return validation.ValidateStruct(&c,
+		// validation.Field(&c.ID, validation.Required),
+		validation.Field(&c.OrderBy, validation.Required),
+		validation.Field(&c.OrderDir, validation.Required),
+		validation.Field(&c.Page, validation.Required),
+		validation.Field(&c.PerPage, validation.Required),
+	)
+}
+
+func WordsIndexRequest(c *gin.Context) (*WordIndexReqStruct, error) {
 	var req WordIndexReqStruct
-	err := c.ShouldBindQuery(&req)
+	err := c.ShouldBind(&req)
+	if err != nil {
+		return &req, err
+	}
+
+	err = req.Validate()
+
+	// set the order dir 
+	if req.Order == "1" {
+		req.OrderDir = "asc"
+	}
 
 	if err != nil {
-		return req, nil
+		return &req, err
 	}
 
-	v := validate.Struct(req)
-
-	fmt.Println(v.Validate())
-
-	if !v.Validate() {
-		return req, v.Errors
-	}
-
-	return req, nil
+	return &req, nil
 
 }

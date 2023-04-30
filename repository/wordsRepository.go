@@ -13,7 +13,7 @@ import (
 
 // repository
 type WordRepositoryInterface interface {
-	FindAll(req requests.WordIndexReqStruct) ([]model.WordModel, error)
+	FindAll(req *requests.WordIndexReqStruct) ([]model.WordModel, error)
 	FindAllByListId(req *requests.WordIndexByListIdReqStruct) ([]model.WordModel, error)
 	Create(word string, wordData model.WordDataModel, isReviewed int) (model.WordModel, error)
 	FindOne(id int) (model.WordModel, error)
@@ -29,17 +29,20 @@ func NewWordRepository(db *sqlx.DB) *WordRepository {
 	return &WordRepository{Db: db}
 }
 
-func (rep *WordRepository) FindAll(r requests.WordIndexReqStruct) ([]model.WordModel, error) {
+func (rep *WordRepository) FindAll(r *requests.WordIndexReqStruct) ([]model.WordModel, error) {
 
 	words := []model.WordModel{}
+	count := model.CountModel{}
 
 	queryMap := map[string]interface{}{"word": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage}
 
-	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// query := fmt.Sprintf("SELECT id,word,word_data,is_reviewed,created_at,updated_at FROM words where word like ? ORDER BY `id` %s LIMIT ?", order)
 
+	searchString := "FROM words where word like :word and id > :id"
+
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT id,word,word_data,is_reviewed,created_at,updated_at FROM words where word like :word and id > :id order by id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT id,word,is_reviewed,created_at,updated_at %s order by id %s limit :limit offset :offset",searchString, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -55,6 +58,13 @@ func (rep *WordRepository) FindAll(r requests.WordIndexReqStruct) ([]model.WordM
 		utils.Errorf(err)
 		return words, err
 	}
+
+	// get the counts
+	queryCount := fmt.Sprintf("SELECT count(id) as count %s limit 1", searchString)
+	nstmt1, _ := rep.Db.PrepareNamed(queryCount)
+	_ = nstmt1.Get(&count, queryMap)
+
+	r.Count = count.Count
 
 	return words, nil
 

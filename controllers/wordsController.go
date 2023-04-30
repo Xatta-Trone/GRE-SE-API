@@ -32,7 +32,7 @@ func (ctl *WordController) WordIndex(c *gin.Context) {
 	fmt.Println(req)
 
 	if errs != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs.All()})
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
 		return
 	}
 
