@@ -68,14 +68,17 @@ func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListM
 func (rep *ListRepository) PublicIndex(r *requests.PublicListsIndexReqStruct) ([]model.ListModel, error) {
 
 	models := []model.ListModel{}
+	count := model.CountModel{}
 
 	fmt.Println(*r)
 
 	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": "lists."+r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "visibility": enums.ListVisibilityPublic}
 
-	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
 
-	query := fmt.Sprintf("SELECT lists.*, COUNT(list_word_relation.word_id) AS word_count FROM lists INNER JOIN list_word_relation ON list_word_relation.list_id = lists.id where lists.name like :query and lists.visibility=:visibility GROUP BY lists.id order by %s %s limit :limit offset :offset",queryMap["orderby"], order)
+	searchString := "FROM lists INNER JOIN list_word_relation ON list_word_relation.list_id = lists.id where lists.name like :query and lists.visibility=:visibility"
+
+	query := fmt.Sprintf("SELECT lists.*, COUNT(list_word_relation.word_id) AS word_count %s GROUP BY lists.id order by %s %s limit :limit offset :offset",searchString, queryMap["orderby"], order)
 
 
 	nstmt, err := rep.Db.PrepareNamed(query)
@@ -90,6 +93,12 @@ func (rep *ListRepository) PublicIndex(r *requests.PublicListsIndexReqStruct) ([
 		utils.Errorf(err)
 		return models, err
 	}
+
+	// get the counts
+	queryCount := fmt.Sprintf("SELECT count(lists.id) as count %s limit 1", searchString)
+	nstmt1, _ := rep.Db.PrepareNamed(queryCount)
+	_ = nstmt1.Get(&count, queryMap)
+	r.Count = count.Count
 
 	return models, nil
 
@@ -128,12 +137,15 @@ func (rep *ListRepository) SavedLists(r *requests.SavedListsIndexReqStruct) ([]m
 func (rep *ListRepository) AdminIndex(r *requests.ListsIndexReqStruct) ([]model.ListModel, error) {
 
 	models := []model.ListModel{}
+	count := model.CountModel{}
 
 	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
 
-	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
+
+	searchString := "FROM lists INNER JOIN users on lists.user_id = users.id where lists.name like :query or users.name like :query or users.email like :query or users.username like :query"
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT lists.* FROM lists INNER JOIN users on lists.user_id = users.id where lists.name like :query or users.name like :query or users.email like :query or users.username like :query order by lists.id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT lists.* %s order by lists.id %s limit :limit offset :offset",searchString, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -147,6 +159,13 @@ func (rep *ListRepository) AdminIndex(r *requests.ListsIndexReqStruct) ([]model.
 		utils.Errorf(err)
 		return models, err
 	}
+
+	// get the counts
+	queryCount := fmt.Sprintf("SELECT count(lists.id) as count %s limit 1", searchString)
+	nstmt1, _ := rep.Db.PrepareNamed(queryCount)
+	_ = nstmt1.Get(&count, queryMap)
+
+	r.Count = count.Count
 
 	return models, nil
 

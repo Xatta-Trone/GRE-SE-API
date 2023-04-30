@@ -6,19 +6,22 @@ import (
 )
 
 type ListsIndexReqStruct struct {
-	ID      int    `form:"id,default=0" json:"id"`
-	Query   string `form:"query" json:"query"`
-	OrderBy string `form:"order_by,default=desc" json:"order_by" `
-	Page    int    `form:"page,default=1" json:"page"`
-	PerPage int    `form:"per_page,default=20" json:"per_page"`
-	Total   int    `json:"total"`
+	ID       int    `form:"id,default=0" json:"id"`
+	Query    string `form:"query" json:"query"`
+	OrderBy  string `form:"order_by,default=id" json:"order_by" `
+	Order    string `form:"order,default=0" json:"order" `
+	OrderDir string `form:"order_dir,default=desc" json:"order_dir" `
+	Page     int    `form:"page,default=1" json:"page"`
+	PerPage  int    `form:"per_page,default=20" json:"per_page"`
+	Count    int64  `form:"count" json:"count"`
 	UserId  uint64 `json:"user_id,omitempty" form:"user_id"`
 }
 
 func (c ListsIndexReqStruct) Validate() error {
 	return validation.ValidateStruct(&c,
 		// validation.Field(&c.ID, validation.Required),
-		validation.Field(&c.OrderBy, validation.Required, validation.In("desc", "asc")),
+		validation.Field(&c.OrderBy, validation.Required),
+		validation.Field(&c.OrderDir, validation.Required),
 		validation.Field(&c.Page, validation.Required),
 		validation.Field(&c.PerPage, validation.Required),
 	)
@@ -32,6 +35,11 @@ func ListsIndexRequest(c *gin.Context) (*ListsIndexReqStruct, error) {
 	}
 
 	err = req.Validate()
+
+	// set the order dir 
+	if req.Order == "1" {
+		req.OrderDir = "asc"
+	}
 
 	if err != nil {
 		return &req, err
