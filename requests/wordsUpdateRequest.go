@@ -1,32 +1,30 @@
 package requests
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
-	"github.com/gookit/validate"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/xatta-trone/words-combinator/model"
 )
 
 type WordUpdateReqStruct struct {
-	IsReviewed int           `json:"is_reviewed" validate:"required|integer"`
-	WordData   []model.Combined `json:"word_data" validate:"required"`
+	IsReviewed int                 `json:"is_reviewed" form:"is_reviewed"`
+	WordData   model.WordDataModel `json:"word_data" form:"word_data"`
 }
 
-func WordUpdateRequest(c *gin.Context) (*WordUpdateReqStruct, validate.Errors) {
+func (c WordUpdateReqStruct) Validate() error {
+	return validation.ValidateStruct(&c,
+		// validation.Field(&c.ID, validation.Required),
+		validation.Field(&c.IsReviewed, validation.Required),
+		validation.Field(&c.WordData, validation.Required),
+	)
+}
+
+func WordUpdateRequest(c *gin.Context) (*WordUpdateReqStruct, error) {
 	var req WordUpdateReqStruct
-	err := c.ShouldBindJSON(&req)
+	err := c.ShouldBind(&req)
 
 	if err != nil {
-		return &req, nil
-	}
-
-	v := validate.Struct(req)
-
-	fmt.Println(v.Validate())
-
-	if !v.Validate() {
-		return &req, v.Errors
+		return &req, err
 	}
 
 	return &req, nil

@@ -180,7 +180,7 @@ func (ctl *WordController) UpdateById(c *gin.Context) {
 	req, errs := requests.WordUpdateRequest(c)
 
 	if errs != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs.All()})
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
 		return
 	}
 
@@ -189,7 +189,7 @@ func (ctl *WordController) UpdateById(c *gin.Context) {
 
 	wordData := model.WordDataModel{
 		Word:            word.Word,
-		PartsOfSpeeches: req.WordData,
+		PartsOfSpeeches: req.WordData.PartsOfSpeeches,
 	}
 
 	// get the data
