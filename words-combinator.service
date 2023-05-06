@@ -1,0 +1,17 @@
+[Unit]
+Description=Words combinator prod
+Requires=mysql.service
+After=multi-user.target
+After=network.target
+After=mysql.service
+
+[Service]
+User=root
+Group=root
+Type=simple
+Restart=always
+RestartSec=5s
+ExecStart=/var/www/words-combinator/app
+
+[Install]
+WantedBy=multi-user.target
