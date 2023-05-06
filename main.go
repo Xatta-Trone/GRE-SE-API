@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"runtime"
 	"time"
 
@@ -27,12 +26,12 @@ func init() {
 func main() {
 	start := time.Now()
 
-	const projectDirName = "words-combinator"
-	re := regexp.MustCompile(`^(.*` + projectDirName + `)`)
-	cwd, _ := os.Getwd()
-	rootPath := re.Find([]byte(cwd))
+	// const projectDirName = "words-combinator"
+	// re := regexp.MustCompile(`^(.*` + projectDirName + `)`)
+	// cwd, _ := os.Getwd()
+	// rootPath := re.Find([]byte(cwd))
 
-	err := godotenv.Load(string(rootPath) + `/.env`)
+	err := godotenv.Load(".env")
 
 	// err := godotenv.Load()
 	if err != nil {
