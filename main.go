@@ -30,7 +30,6 @@ func main() {
 	// re := regexp.MustCompile(`^(.*` + projectDirName + `)`)
 	// cwd, _ := os.Getwd()
 	// rootPath := re.Find([]byte(cwd))
-
 	err := godotenv.Load(".env")
 
 	// err := godotenv.Load()
