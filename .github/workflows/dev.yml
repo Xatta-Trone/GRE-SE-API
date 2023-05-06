@@ -33,9 +33,10 @@ jobs:
         PORT: ${{ secrets.PORT }}
         KEY: ${{ secrets.SSHKEY }}
         script: |
-          cd /var/www/words-combinator-dev
-          git checkout branch staging
+          cd /var/www/word-combinator-dev
+          git checkout staging
           git pull origin staging
           make mgup
-          go build -o main 
-          sudo systemctl restart words-combinator-dev
+          go build -o app 
+          sudo systemctl daemon-reload
+          sudo systemctl restart word-combinator-dev

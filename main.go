@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"runtime"
 	"time"
 
@@ -25,7 +26,15 @@ func init() {
 
 func main() {
 	start := time.Now()
-	err := godotenv.Load()
+
+	const projectDirName = "words-combinator"
+	re := regexp.MustCompile(`^(.*` + projectDirName + `)`)
+	cwd, _ := os.Getwd()
+	rootPath := re.Find([]byte(cwd))
+
+	err := godotenv.Load(string(rootPath) + `/.env`)
+
+	// err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 

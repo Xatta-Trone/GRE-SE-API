@@ -33,8 +33,8 @@ jobs:
         PORT: ${{ secrets.PORT }}
         KEY: ${{ secrets.SSHKEY }}
         script: |
-          cd /var/www/words-combinator
-          git pull origin main
-          make mgup
-          go build -o app 
-          sudo systemctl restart words-combinator
+          # cd /var/www/word-combinator
+          # sudo git pull origin main
+          # make mgup
+          # go build -o app 
+          # sudo systemctl restart word-combinator
