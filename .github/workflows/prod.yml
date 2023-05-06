@@ -36,5 +36,5 @@ jobs:
           cd /var/www/words-combinator
           git pull origin main
           make mgup
-          go build -o main 
+          go build -o app 
           sudo systemctl restart words-combinator
