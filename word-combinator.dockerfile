@@ -14,8 +14,6 @@ COPY . .
 RUN CGO_ENABLED=0 go build -o app
 RUN chmod +x app
 
-
-
 #run script
 # RUN "./script.sh"
 RUN chmod +x script.sh
