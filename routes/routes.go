@@ -9,6 +9,12 @@ func Init(r *gin.Engine) {
 
 	r.Use(middlewares.DummyMiddleware())
 
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "Welcome to GRE-SE",
+		})
+	})
+
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
