@@ -38,6 +38,6 @@ jobs:
           git pull origin staging
           sudo docker compose up -d --build
           sudo docker compose ps
-          sudo docker exec -it words-combinator sh "./script.sh"
-          sudo systemctl daemon-reload
-          sudo systemctl restart word-combinator-dev
+          sudo docker exec -it words-combinator sh "make mgup"
+          # sudo systemctl daemon-reload
+          # sudo systemctl restart word-combinator-dev
