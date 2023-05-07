@@ -9,7 +9,7 @@ services:
     depends_on: 
       - mysql
     ports:
-      - 8080:8080 
+      - 6001:8080 
     restart: always
   mysql:
     image: mysql:8.0.33
@@ -20,7 +20,7 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWOR: ${DB_PASS}
     ports:
-      - "6036:3306"
+      - "6002:3306"
     volumes:
       - ./db-data/mysql:/var/lib/mysql
   phpmyadmin:
@@ -37,5 +37,5 @@ services:
       MEMORY_LIMIT: 512M
       UPLOAD_LIMIT: 512M
     ports:
-      - 6001:80
+      - 6003:80
 
