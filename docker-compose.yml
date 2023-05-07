@@ -34,6 +34,8 @@ services:
       # PMA_USER: ${DB_USER}
       # PMA_PASSWORD: ${DB_PASS}
       PMA_ARBITRARY: 1
+      MEMORY_LIMIT: 512M
+      UPLOAD_LIMIT: 512M
     ports:
       - 6001:80
 
