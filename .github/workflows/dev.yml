@@ -36,7 +36,7 @@ jobs:
           cd /var/www/word-combinator-dev
           git checkout staging
           git pull origin staging
-          make mgup
-          go build -o app 
+          sudo docker compose up -d --no-deps --build
+          sudo docker exec -it words-combinator sh "./script.sh"
           sudo systemctl daemon-reload
           sudo systemctl restart word-combinator-dev
