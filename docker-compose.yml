@@ -1,6 +1,14 @@
 version: '3'
 
 services:
+  words-combinator:
+    build:
+      context: ./
+      dockerfile: ./word-combinator.dockerfile
+    depends_on: 
+      - mysql
+    ports:
+      - 8080:8080 
   mysql:
     image: mysql:8.0.33
     container_name: mysql
