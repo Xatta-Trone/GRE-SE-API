@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Go
-      uses: actions/setup-go@v3
+    # - name: Set up Go
+    #   uses: actions/setup-go@v3
     #   with:
     #     go-version: 1.20
 
@@ -36,7 +36,7 @@ jobs:
           cd /var/www/word-combinator-dev
           git checkout staging
           git pull origin staging
-          sudo docker compose up -d --build
+          sudo docker compose up words-combinator -d --build
           sudo docker compose ps
           sudo docker compose exec -i words-combinator sh "./script.sh"
           sudo docker image prune -a -f

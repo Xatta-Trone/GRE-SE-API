@@ -6,8 +6,8 @@ services:
     build:
       context: ./
       dockerfile: ./word-combinator.dockerfile
-    depends_on: 
-      - mysql
+    # depends_on: 
+    #   - mysql
     ports:
       - 6001:8080 
   mysql:
