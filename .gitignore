@@ -2,4 +2,3 @@ tmp
 uploads/*.csv
 .env
 app
-db-data
