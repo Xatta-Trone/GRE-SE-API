@@ -17,4 +17,4 @@ RUN CGO_ENABLED=0 go build -o app
 
 # COPY --from=builder /app/prod/app /app/prod/app
 
-CMD [ "./app","make mgup"]
+CMD [ "./app"]

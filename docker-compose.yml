@@ -10,7 +10,6 @@ services:
       - mysql
     ports:
       - 6001:8080 
-    restart: always
   mysql:
     image: mysql:8.0.33
     container_name: mysql
