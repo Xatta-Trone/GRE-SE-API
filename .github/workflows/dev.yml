@@ -39,5 +39,6 @@ jobs:
           sudo docker compose up -d --build
           sudo docker compose ps
           sudo docker compose exec -i words-combinator sh "./script.sh"
+          sudo docker image prune -a -f
           sudo systemctl daemon-reload
           sudo systemctl restart word-combinator-dev
