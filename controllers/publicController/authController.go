@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/services"
@@ -57,9 +58,10 @@ func (ctl *AuthController) Register(c *gin.Context) {
 }
 
 func (ctl *AuthController) Login(c *gin.Context) {
+	user := model.UserModel{}
 
 	// validation request it is also in the admin user create request
-	req, errs := requests.UsersLoginRequest(c)
+	req, errs := requests.UsersCreateRequest(c)
 
 	if errs != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
@@ -70,8 +72,23 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	user, err := ctl.userRepo.FindOneByEmail(req.Email)
 
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
-		return
+		// save the record
+		user, err = ctl.userRepo.Create(req)
+
+		if err != nil && strings.Contains(err.Error(), "key 'users.email'") {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "The email has already been taken."})
+			return
+		}
+
+		if err != nil && strings.Contains(err.Error(), "key 'users.username'") {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "The username has already been taken."})
+			return
+		}
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+			return
+		}
 	}
 
 	// record found, now issue a token

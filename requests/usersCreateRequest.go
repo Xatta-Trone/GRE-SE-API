@@ -7,14 +7,16 @@ import (
 )
 
 type UsersCreateRequestStruct struct {
-	Name  string `json:"name" form:"name" `
 	Email string `json:"email" form:"email" `
+	Token string `json:"token" form:"token" `
+	Name string `json:"name" form:"name" `
 }
 
 func (c UsersCreateRequestStruct) Validate() error {
 	return validation.ValidateStruct(&c,
-		validation.Field(&c.Name, validation.Required),
+		validation.Field(&c.Token, validation.Required),
 		validation.Field(&c.Email, validation.Required, is.Email),
+		validation.Field(&c.Name, validation.Required),
 	)
 }
 
