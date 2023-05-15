@@ -77,6 +77,7 @@ func (rep *ListRepository) PublicIndex(r *requests.PublicListsIndexReqStruct) ([
 	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
 
 	searchString := "FROM lists INNER JOIN list_word_relation ON list_word_relation.list_id = lists.id where lists.name like :query and lists.visibility=:visibility"
+	searchStringCount := "FROM lists where lists.name like :query and lists.visibility=:visibility"
 
 	query := fmt.Sprintf("SELECT lists.*, COUNT(list_word_relation.word_id) AS word_count %s GROUP BY lists.id order by %s %s limit :limit offset :offset",searchString, queryMap["orderby"], order)
 
@@ -95,7 +96,7 @@ func (rep *ListRepository) PublicIndex(r *requests.PublicListsIndexReqStruct) ([
 	}
 
 	// get the counts
-	queryCount := fmt.Sprintf("SELECT count(lists.id) as count %s limit 1", searchString)
+	queryCount := fmt.Sprintf("SELECT count(lists.id) as count %s limit 1", searchStringCount)
 	nstmt1, _ := rep.Db.PrepareNamed(queryCount)
 	_ = nstmt1.Get(&count, queryMap)
 	r.Count = count.Count
