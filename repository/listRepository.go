@@ -74,7 +74,7 @@ func (rep *ListRepository) PublicIndex(r *requests.PublicListsIndexReqStruct) ([
 
 	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": "lists."+r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "visibility": enums.ListVisibilityPublic}
 
-	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 
 	searchString := "FROM lists INNER JOIN list_word_relation ON list_word_relation.list_id = lists.id where lists.name like :query and lists.visibility=:visibility"
 	searchStringCount := "FROM lists where lists.name like :query and lists.visibility=:visibility"
