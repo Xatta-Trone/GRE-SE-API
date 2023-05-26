@@ -20,6 +20,7 @@ type ListModel struct {
 type ListMetaModel struct {
 	Id         uint64    `json:"id"`
 	UserId     uint64    `json:"user_id,omitempty" db:"user_id"`
+	FolderId   *uint64    `json:"folder_id,omitempty" db:"folder_id"`
 	Name       string    `json:"name"`
 	Url        *string   `json:"url"`
 	Words      *string   `json:"words"`
@@ -45,8 +46,8 @@ type FolderModel struct {
 	CratedAt   time.Time `json:"crated_at" db:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
 	// relations
-	User *UserModel `json:"user,omitempty"` // for one2one relations
-	ListsCount *int `json:"lists_count,omitempty" db:"lists_count"`
+	User       *UserModel `json:"user,omitempty"` // for one2one relations
+	ListsCount *int       `json:"lists_count,omitempty" db:"lists_count"`
 }
 
 type FolderListRelationModel struct {

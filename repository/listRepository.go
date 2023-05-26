@@ -203,9 +203,9 @@ func (rep *ListRepository) Create(req *requests.ListsCreateRequestStruct) (model
 
 	var newRecord model.ListMetaModel
 
-	queryMap := map[string]interface{}{"name": req.Name, "url": req.Url, "words": req.Words, "visibility": req.Visibility, "user_id": req.UserId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
+	queryMap := map[string]interface{}{"name": req.Name, "url": req.Url, "words": req.Words, "visibility": req.Visibility, "user_id": req.UserId, "folder_id": req.FolderId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
 
-	res, err := rep.Db.NamedExec("Insert into list_meta(name,url,words,visibility,user_id,created_at,updated_at) values(:name,nullif(:url,\"\"),nullif(:words,\"\"),:visibility,:user_id,created_at,:updated_at)", queryMap)
+	res, err := rep.Db.NamedExec("Insert into list_meta(name,url,words,visibility,user_id,folder_id,created_at,updated_at) values(:name,nullif(:url,\"\"),nullif(:words,\"\"),:visibility,:user_id,nullif(:folder_id,0),created_at,:updated_at)", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)

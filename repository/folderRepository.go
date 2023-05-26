@@ -44,7 +44,7 @@ func (rep *FolderRepository) Index(r *requests.FolderIndexReqStruct) ([]model.Fo
 
 	fmt.Println(r.UserId)
 
-	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
 	query := fmt.Sprintf("SELECT * FROM folders where name like :query and user_id = nullif(:user_id,0) order by id %s limit :limit offset :offset", order)
 
@@ -139,7 +139,7 @@ func (rep *FolderRepository) AdminIndex(r *requests.FolderIndexReqStruct) ([]mod
 
 	fmt.Println(r.UserId)
 
-	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
 	searchString := "FROM folders INNER JOIN users on folders.user_id = users.id where folders.name like :query or users.name like :query or users.email like :query or users.username like :query"
 

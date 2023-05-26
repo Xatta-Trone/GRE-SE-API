@@ -492,6 +492,10 @@ func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta m
 	var folderIdToInsert uint64
 	var ListIdToInsert uint64
 
+	if listMeta.FolderId != nil {
+		folderIdToInsert = *listMeta.FolderId
+	}
+
 	if folderId != 0 {
 		folderIdToInsert = folderId
 	}
