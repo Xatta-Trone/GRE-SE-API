@@ -20,7 +20,7 @@ type ListModel struct {
 type ListMetaModel struct {
 	Id         uint64    `json:"id"`
 	UserId     uint64    `json:"user_id,omitempty" db:"user_id"`
-	FolderId   *uint64    `json:"folder_id,omitempty" db:"folder_id"`
+	FolderId   *uint64   `json:"folder_id,omitempty" db:"folder_id"`
 	Name       string    `json:"name"`
 	Url        *string   `json:"url"`
 	Words      *string   `json:"words"`
@@ -31,8 +31,9 @@ type ListMetaModel struct {
 }
 
 type ListWordModel struct {
-	ListId uint64 `json:"list_id" db:"list_id"`
-	WordId uint64 `json:"word_id" db:"word_id"`
+	ListId    uint64 `json:"list_id" db:"list_id"`
+	WordId    uint64 `json:"word_id" db:"word_id"`
+	WordCount *int   `json:"word_count,omitempty" db:"word_count"`
 }
 
 type FolderModel struct {

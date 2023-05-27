@@ -12,7 +12,7 @@ type ListsIndexReqStruct struct {
 	Order   string `form:"order,default=desc" json:"order" `
 	Page    int    `form:"page,default=1" json:"page"`
 	PerPage int    `form:"per_page,default=20" json:"per_page"`
-	UserId  uint64 `json:"user_id,omitempty"`
+	UserId  uint64 `json:"user_id"`
 	Count   int64  `form:"count" json:"count"`
 }
 

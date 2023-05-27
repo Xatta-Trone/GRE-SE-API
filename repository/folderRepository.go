@@ -196,9 +196,9 @@ func (rep *FolderRepository) Create(req *requests.FolderCreateRequestStruct) (mo
 
 	if lastId != 0 {
 		// create the folder list relation
-		queryMapForListFolderRelation := map[string]interface{}{"folder_id": lastId, "user_id": req.UserId}
+		queryMapForListFolderRelation := map[string]interface{}{"folder_id": lastId, "user_id": req.UserId, "created_at": time.Now().UTC()}
 		// insert into saved folders
-		_, err = rep.Db.NamedExec("Insert into saved_folders(user_id,folder_id) values(:user_id,:folder_id)", queryMapForListFolderRelation)
+		_, err = rep.Db.NamedExec("Insert into saved_folders(user_id,folder_id,created_at) values(:user_id,:folder_id,:created_at)", queryMapForListFolderRelation)
 		if err != nil {
 			utils.Errorf(err)
 			utils.PrintR("there was an error creating list folder relation \n")
@@ -223,9 +223,9 @@ func (rep *FolderRepository) Create(req *requests.FolderCreateRequestStruct) (mo
 func (rep *FolderRepository) SaveFolder(userId, folderId uint64) (bool, error) {
 
 
-	queryMap := map[string]interface{}{ "user_id": userId, "folder_id": folderId}
+	queryMap := map[string]interface{}{ "user_id": userId, "folder_id": folderId, "created_at": time.Now().UTC()}
 
-	_, err := rep.Db.NamedExec("Insert ignore into saved_folders(user_id,folder_id) values(:user_id,:folder_id)", queryMap)
+	_, err := rep.Db.NamedExec("Insert ignore into saved_folders(user_id,folder_id,created_at) values(:user_id,:folder_id,:created_at)", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)

@@ -67,16 +67,70 @@ func (ctl *ListsController) Index(c *gin.Context) {
 	// attach the user id to the request
 	req.UserId = userId
 
+	fmt.Println(req)
+
 	// get the data
-	word, err := ctl.repository.Index(req)
+	lists, err := ctl.repository.Index(req)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
 	}
 
+	// make a temporary variable to copy the result then export via gin
+	listsToExport := make([]model.ListModel, 0)
+	userIds := []uint64{}
+	listIds := []uint64{}
+	usersMap := make(map[uint64]model.UserModel)
+	wordCountMap := make(map[uint64]int)
+
+	// check if len is zero
+	if len(lists) == 0 {
+		// send empty response
+		c.JSON(200, gin.H{
+			"data": listsToExport,
+			"meta": req,
+		})
+		return
+	}
+
+	for _, list := range lists {
+		userIds = append(userIds, list.UserId)
+		listIds = append(listIds, list.Id)
+	}
+
+	// get the users
+	users, _ := ctl.userRepo.In(userIds, "id", "username")
+	// map the users to user map to avoid second level iteration
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	// get the users
+	listsCount, _ := ctl.repository.GetCount(listIds)
+	// map the users to user map to avoid second level iteration
+	for _, listCountModel := range listsCount {
+		if (listCountModel.WordCount != nil) {
+			wordCountMap[listCountModel.ListId] = *listCountModel.WordCount
+		}else {
+			wordCountMap[listCountModel.ListId] = 0
+		}
+		
+	}
+
+	// now attach the users to the folders result
+	for _, list := range lists {
+		user := usersMap[list.UserId]
+		wordCount := wordCountMap[list.Id]
+		f := model.ListModel(list)
+		f.User = &user
+		f.WordCount = &wordCount
+
+		listsToExport = append(listsToExport, f)
+	}
+
 	c.JSON(200, gin.H{
-		"data": word,
+		"data": listsToExport,
 		"meta": req,
 	})
 

@@ -28,6 +28,7 @@ type ListRepositoryInterface interface {
 	DeleteFromSavedList(userId,listId uint64) (bool, error)
 	DeleteWordInList(wordId, listId uint64) (bool, error)
 	ListsByFolderId(req *requests.FolderListIndexReqStruct) ([]model.ListModel, error)
+	GetCount(ids []uint64) ([]model.ListWordModel, error)
 }
 
 type ListRepository struct {
@@ -41,12 +42,15 @@ func NewListRepository(db *sqlx.DB) *ListRepository {
 func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListModel, error) {
 
 	models := []model.ListModel{}
+	count := model.CountModel{}
 
-	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "public_visibility":enums.ListVisibilityPublic }
 
-	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT id,name,slug,visibility,list_meta_id,status,created_at,updated_at FROM lists where name like :query and user_id = :user_id order by id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT * FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON (saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id = :user_id) OR (saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id != :user_id AND lists.visibility = :public_visibility) order by saved_lists.created_at %s) and name like :query limit :limit offset :offset", order)
+
+	searchStringCount := fmt.Sprintf("FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON (saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id = :user_id) OR (saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id != :user_id AND lists.visibility = :public_visibility) order by saved_lists.created_at %s) and name like :query", order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -60,6 +64,12 @@ func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListM
 		utils.Errorf(err)
 		return models, err
 	}
+
+	// get the counts
+	queryCount := fmt.Sprintf("SELECT count(lists.id) as count %s limit 1", searchStringCount)
+	nstmt1, _ := rep.Db.PrepareNamed(queryCount)
+	_ = nstmt1.Get(&count, queryMap)
+	r.Count = count.Count
 
 	return models, nil
 
@@ -238,9 +248,9 @@ func (rep *ListRepository) Create(req *requests.ListsCreateRequestStruct) (model
 
 func (rep *ListRepository) SaveListItem(req *requests.SavedListsCreateRequestStruct) (bool, error) {
 
-	queryMap := map[string]interface{}{"user_id": req.UserId,"list_id": req.ListId}
+	queryMap := map[string]interface{}{"user_id": req.UserId,"list_id": req.ListId, "created_at": time.Now().UTC()}
 
-	_, err := rep.Db.NamedExec("Insert ignore into saved_lists(user_id,list_id) values(:user_id,:list_id)", queryMap)
+	_, err := rep.Db.NamedExec("Insert ignore into saved_lists(user_id,list_id,created_at) values(:user_id,:list_id, :created_at)", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)
@@ -508,5 +518,30 @@ func (rep *ListRepository) DeleteWordInList(wordId, listId uint64) (bool, error)
 	}
 
 	return true, nil
+
+}
+
+func (rep *ListRepository) GetCount(ids []uint64) ([]model.ListWordModel, error) {
+
+
+	models := []model.ListWordModel{}
+
+	query, args, err := sqlx.In("SELECT list_word_relation.list_id, count(list_word_relation.word_id) as word_count FROM list_word_relation where list_id in (?) group by list_id", ids)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	query = rep.Db.Rebind(query)
+
+	err = rep.Db.Select(&models, query, args...)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
 
 }
