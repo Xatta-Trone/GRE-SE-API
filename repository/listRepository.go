@@ -142,7 +142,7 @@ func (rep *ListRepository) AdminIndex(r *requests.ListsIndexReqStruct) ([]model.
 
 	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
 
-	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 
 	searchString := "FROM lists INNER JOIN users on lists.user_id = users.id where lists.name like :query or users.name like :query or users.email like :query or users.username like :query"
 	// I am using named execution to make it more clear
