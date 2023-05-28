@@ -54,4 +54,6 @@ type FolderModel struct {
 type FolderListRelationModel struct {
 	FolderId uint64 `json:"folder_id" db:"folder_id"`
 	ListId   uint64 `json:"list_id" db:"list_id"`
+	ListCount *int   `json:"list_count,omitempty" db:"list_count"`
+
 }

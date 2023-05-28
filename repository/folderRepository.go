@@ -27,6 +27,7 @@ type FolderRepositoryInterface interface {
 	Delete(folderId uint64, deleteLists bool) (bool, error)
 	DeleteSavedFolder(userId, folderId uint64) (bool, error)
 	ToggleList(folderId, listId uint64) (bool, error)
+	GetCount(ids []uint64) ([]model.FolderListRelationModel, error)
 }
 type FolderRepository struct {
 	Db *sqlx.DB
@@ -39,14 +40,34 @@ func NewFolderRepository(db *sqlx.DB) *FolderRepository {
 func (rep *FolderRepository) Index(r *requests.FolderIndexReqStruct) ([]model.FolderModel, error) {
 
 	models := []model.FolderModel{}
+	count := model.CountModel{}
 
-	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId,  "public_visibility":enums.FolderVisibilityPublic, "filter": r.Filter }
 
 	fmt.Println(r.UserId)
 
+	// select the filter 
+	filterQuery := ""
+	filterCreatedSql := "(saved_folders.folder_id = folders.id AND saved_folders.user_id = :user_id AND folders.user_id = :user_id)"
+	filterSavedSql := "(saved_folders.folder_id = folders.id AND saved_folders.user_id = :user_id AND folders.user_id != :user_id AND folders.visibility = :public_visibility)"
+
+	if (r.Filter == enums.FolderFilterAll) {
+		filterQuery = filterCreatedSql + " OR " + filterSavedSql
+	}
+
+	if (r.Filter == enums.FolderFilterCrated) {
+		filterQuery = filterCreatedSql
+	}
+
+	if (r.Filter == enums.FolderFilterSaved) {
+		filterQuery = filterSavedSql
+	}
+
 	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT * FROM folders where name like :query and user_id = nullif(:user_id,0) order by id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT * FROM folders where id IN (SELECT saved_folders.folder_id FROM saved_folders INNER JOIN folders ON %s order by saved_folders.created_at %s) and name like :query limit :limit offset :offset",filterQuery, order)
+
+	searchStringCount := fmt.Sprintf("FROM folders where id IN (SELECT saved_folders.folder_id FROM saved_folders INNER JOIN folders ON %s order by saved_folders.created_at %s) and name like :query",filterQuery, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -60,6 +81,12 @@ func (rep *FolderRepository) Index(r *requests.FolderIndexReqStruct) ([]model.Fo
 		utils.Errorf(err)
 		return models, err
 	}
+
+	// get the counts
+	queryCount := fmt.Sprintf("SELECT count(folders.id) as count %s limit 1", searchStringCount)
+	nstmt1, _ := rep.Db.PrepareNamed(queryCount)
+	_ = nstmt1.Get(&count, queryMap)
+	r.Count = count.Count
 
 	return models, nil
 
@@ -464,5 +491,31 @@ func (rep *FolderRepository) ToggleList(folderId, listId uint64) (bool, error) {
 
 		return true, nil
 	}
+
+}
+
+
+func (rep *FolderRepository) GetCount(ids []uint64) ([]model.FolderListRelationModel, error) {
+
+
+	models := []model.FolderListRelationModel{}
+
+	query, args, err := sqlx.In("SELECT folder_list_relation.folder_id, count(folder_list_relation.list_id) as list_count FROM folder_list_relation where folder_id in (?) group by folder_id", ids)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	query = rep.Db.Rebind(query)
+
+	err = rep.Db.Select(&models, query, args...)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
 
 }

@@ -57,8 +57,60 @@ func (ctl *FolderController) Index(c *gin.Context) {
 		return
 	}
 
+	// make a temporary variable to copy the result then export via gin
+	foldersToExport := make([]model.FolderModel, 0)
+	userIds := []uint64{}
+	folderIds := []uint64{}
+	usersMap := make(map[uint64]model.UserModel)
+	listCountMap := make(map[uint64]int)
+
+	// check if len is zero
+	if len(folders) == 0 {
+		// send empty response
+		c.JSON(200, gin.H{
+			"data": foldersToExport,
+			"meta": req,
+		})
+		return
+	}
+
+	for _, folder := range folders {
+		userIds = append(userIds, folder.UserId)
+		folderIds = append(folderIds, folder.Id)
+	}
+
+	// get the users
+	users, _ := ctl.userRepo.In(userIds, "id", "username")
+	// map the users to user map to avoid second level iteration
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	// get the users
+	listsCount, _ := ctl.repository.GetCount(folderIds)
+	// map the users to user map to avoid second level iteration
+	for _, listCountModel := range listsCount {
+		if listCountModel.ListCount != nil {
+			listCountMap[listCountModel.FolderId] = *listCountModel.ListCount
+		} else {
+			listCountMap[listCountModel.FolderId] = 0
+		}
+
+	}
+
+	// now attach the users to the folders result
+	for _, folder := range folders {
+		user := usersMap[folder.UserId]
+		listCount := listCountMap[folder.Id]
+		f := model.FolderModel(folder)
+		f.User = &user
+		f.ListsCount = &listCount
+
+		foldersToExport = append(foldersToExport, f)
+	}
+
 	c.JSON(200, gin.H{
-		"data": folders,
+		"data": foldersToExport,
 		"meta": req,
 	})
 }
@@ -458,6 +510,13 @@ func (ctl *FolderController) Delete(c *gin.Context) {
 }
 
 func (ctl *FolderController) DeleteSaveFolder(c *gin.Context) {
+	// determine if the lists should be deleted or not
+	var deleteLists bool = false
+	delete := utils.ParseQueryString(c, "delete_lists")
+
+	if delete == "1" {
+		deleteLists = true
+	}
 	userId, err := utils.GetUserId(c)
 
 	if err != nil {
@@ -470,16 +529,61 @@ func (ctl *FolderController) DeleteSaveFolder(c *gin.Context) {
 		return
 	}
 
-	ok, err := ctl.repository.DeleteSavedFolder(userId,folderId)
+	// get the data
+	folder, err := ctl.repository.FindOne(folderId)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
 		return
 	}
 
-	if err != nil || !ok {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
+	}
+
+	// check permissions and visibility
+	if userId == folder.UserId {
+		// the user is the owner of the folder
+		// check if it belongs to list meta or not
+		if folder.ListMetaId != nil {
+			ok, err := ctl.listRepository.DeleteFromListMeta(*folder.ListMetaId)
+
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+				return
+			}
+
+			if err != nil || !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+				return
+			}
+		} else {
+			ok, err := ctl.repository.Delete(folderId, deleteLists)
+
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+				return
+			}
+
+			if err != nil || !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+				return
+			}
+		}
+	} else {
+		// just remove from the relation
+		ok, err := ctl.repository.DeleteSavedFolder(userId, folderId)
+
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+			return
+		}
+
+		if err != nil || !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+			return
+		}
 	}
 
 	c.JSON(http.StatusNoContent, gin.H{
