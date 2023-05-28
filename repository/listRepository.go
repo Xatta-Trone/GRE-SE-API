@@ -46,11 +46,28 @@ func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListM
 
 	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "public_visibility":enums.ListVisibilityPublic }
 
+	// select the filter 
+	filterQuery := ""
+	filterCreatedSql := "(saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id = :user_id)"
+	filterSavedSql := "(saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id != :user_id AND lists.visibility = :public_visibility)"
+
+	if (r.Filter == enums.ListFilterAll) {
+		filterQuery = filterCreatedSql + " OR " + filterSavedSql
+	}
+
+	if (r.Filter == enums.ListFilterCrated) {
+		filterQuery = filterCreatedSql
+	}
+
+	if (r.Filter == enums.ListFilterSaved) {
+		filterQuery = filterSavedSql
+	}
+
 	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT * FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON (saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id = :user_id) OR (saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id != :user_id AND lists.visibility = :public_visibility) order by saved_lists.created_at %s) and name like :query limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT * FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON %s order by saved_lists.created_at %s) and name like :query limit :limit offset :offset", filterQuery, order)
 
-	searchStringCount := fmt.Sprintf("FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON (saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id = :user_id) OR (saved_lists.list_id = lists.id AND saved_lists.user_id = :user_id AND lists.user_id != :user_id AND lists.visibility = :public_visibility) order by saved_lists.created_at %s) and name like :query", order)
+	searchStringCount := fmt.Sprintf("FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON %s order by saved_lists.created_at %s) and name like :query", filterQuery, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 

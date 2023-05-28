@@ -110,12 +110,12 @@ func (ctl *ListsController) Index(c *gin.Context) {
 	listsCount, _ := ctl.repository.GetCount(listIds)
 	// map the users to user map to avoid second level iteration
 	for _, listCountModel := range listsCount {
-		if (listCountModel.WordCount != nil) {
+		if listCountModel.WordCount != nil {
 			wordCountMap[listCountModel.ListId] = *listCountModel.WordCount
-		}else {
+		} else {
 			wordCountMap[listCountModel.ListId] = 0
 		}
-		
+
 	}
 
 	// now attach the users to the folders result
@@ -564,16 +564,60 @@ func (ctl *ListsController) DeleteSavedList(c *gin.Context) {
 		return
 	}
 
-	ok, err := ctl.repository.DeleteFromSavedList(userId,listId)
+	// get the data
+	list, err := ctl.repository.FindOne(listId)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
 		return
 	}
 
-	if err != nil || !ok {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
+	}
+
+	// check permissions and visibility
+	if userId == list.UserId {
+		// user is the owner of the list
+		// check if it belongs to list meta or not
+		if list.ListMetaId != nil {
+			ok, err := ctl.repository.DeleteFromListMeta(*list.ListMetaId)
+
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+				return
+			}
+
+			if err != nil || !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+				return
+			}
+		} else {
+			ok, err := ctl.repository.Delete(list.Id)
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+				return
+			}
+
+			if err != nil || !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+				return
+			}
+		}
+	} else {
+		ok, err := ctl.repository.DeleteFromSavedList(userId, listId)
+
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+			return
+		}
+
+		if err != nil || !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+			return
+		}
+
 	}
 
 	c.JSON(http.StatusNoContent, gin.H{
