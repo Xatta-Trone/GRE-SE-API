@@ -303,16 +303,16 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 	userId, err := utils.GetUserId(c)
 
 	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No user found."})
 		return
 	}
-
-	fmt.Println(userId)
 
 	// get the folder id
 	folderId, err := utils.ParseParamToUint64(c, "id")
 
 	if err != nil {
 		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
 		return
 	}
 
@@ -358,8 +358,61 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 		return
 	}
 
+	// make a temporary variable to copy the result then export via gin
+	listsToExport := make([]model.ListModel, 0)
+	userIds := []uint64{}
+	listIds := []uint64{}
+	usersMap := make(map[uint64]model.UserModel)
+	wordCountMap := make(map[uint64]int)
+
+	// check if len is zero
+	if len(lists) == 0 {
+		// send empty response
+		c.JSON(200, gin.H{
+			"lists":  listsToExport,
+			"folder": folder,
+			"meta":   req,
+		})
+		return
+	}
+
+	for _, list := range lists {
+		userIds = append(userIds, list.UserId)
+		listIds = append(listIds, list.Id)
+	}
+
+	// get the users
+	users, _ := ctl.userRepo.In(userIds, "id", "username")
+	// map the users to user map to avoid second level iteration
+	for _, user := range users {
+		usersMap[user.ID] = user
+	}
+
+	// get the users
+	listsCount, _ := ctl.listRepository.GetCount(listIds)
+	// map the users to user map to avoid second level iteration
+	for _, listCountModel := range listsCount {
+		if listCountModel.WordCount != nil {
+			wordCountMap[listCountModel.ListId] = *listCountModel.WordCount
+		} else {
+			wordCountMap[listCountModel.ListId] = 0
+		}
+
+	}
+
+	// now attach the users to the folders result
+	for _, list := range lists {
+		user := usersMap[list.UserId]
+		wordCount := wordCountMap[list.Id]
+		f := model.ListModel(list)
+		f.User = &user
+		f.WordCount = &wordCount
+
+		listsToExport = append(listsToExport, f)
+	}
+
 	c.JSON(200, gin.H{
-		"lists":  lists,
+		"lists":  listsToExport,
 		"folder": folder,
 		"meta":   req,
 	})
