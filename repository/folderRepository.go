@@ -285,6 +285,15 @@ func (rep *FolderRepository) FindOne(id uint64) (model.FolderModel, error) {
 		return modelx, err
 	}
 
+	// get the count 
+	listsCount ,_ := rep.GetCount([]uint64{id})
+
+	for _, list := range listsCount {
+		if list.FolderId == id {
+			modelx.ListsCount = list.ListCount
+		}
+	}
+
 	return modelx, nil
 
 }

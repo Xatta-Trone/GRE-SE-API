@@ -207,7 +207,7 @@ func (rep *ListRepository) ListsByFolderId(r *requests.FolderListIndexReqStruct)
 
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT * FROM lists where (name like :query and user_id = :user_id) and id in (select list_id from folder_list_relation where folder_id = :folder_id ) order by id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT * FROM lists where (name like :query) and id in (select list_id from folder_list_relation where folder_id = :folder_id ) order by id %s limit :limit offset :offset", order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 

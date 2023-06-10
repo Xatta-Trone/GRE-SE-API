@@ -344,19 +344,7 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 		return
 	}
 
-	userIdString := c.GetString("user_id")
-
-	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "user id not found"})
-		return
-	}
-
-	userId, err := strconv.ParseUint(userIdString, 10, 64)
-
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
-		return
-	}
+	userId, _ := utils.GetUserId(c)
 
 	// get the data
 	list, err := ctl.repository.FindOneBySlug(slug)
@@ -372,7 +360,7 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 	}
 
 	// check permissions and visibility
-	if userId != list.UserId && enums.ListVisibilityPublic != list.Visibility {
+	if list.Visibility != enums.ListVisibilityPublic && userId != list.UserId {
 		c.JSON(http.StatusForbidden, gin.H{"errors": "The list either not public or deleted."})
 		return
 	}
@@ -397,6 +385,11 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
 	}
+
+	// now attach the user in the list meta 
+	user,_ := ctl.userRepo.FindOne(int(list.UserId))
+
+	list.User = &user
 
 	c.JSON(200, gin.H{
 		"list_meta": list,

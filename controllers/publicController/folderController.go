@@ -332,7 +332,7 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 	}
 
 	// check permissions and visibility
-	if userId != folder.UserId && enums.FolderVisibilityPublic != folder.Visibility {
+	if enums.FolderVisibilityPublic != folder.Visibility && userId != folder.UserId {
 		c.JSON(http.StatusForbidden, gin.H{"errors": "The folder either not public or deleted."})
 		return
 	}
@@ -410,6 +410,13 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 
 		listsToExport = append(listsToExport, f)
 	}
+
+	// get the user data of this folder 
+	user,_ := ctl.userRepo.FindOne(int(folder.UserId))
+
+	folder.User = &user
+
+	// get the total folder count 
 
 	c.JSON(200, gin.H{
 		"lists":  listsToExport,
