@@ -350,6 +350,14 @@ func (rep *ListRepository) FindOneBySlug(slug string) (model.ListModel, error) {
 		return modelx, err
 	}
 
+	wordCounts,_ := rep.GetCount([]uint64{modelx.Id})
+
+	for _, wordCount := range wordCounts {
+		if wordCount.ListId == modelx.Id {
+			modelx.WordCount = wordCount.WordCount
+		}
+	}
+
 	return modelx, nil
 
 }
