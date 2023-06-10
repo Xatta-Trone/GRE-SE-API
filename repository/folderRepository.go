@@ -65,7 +65,7 @@ func (rep *FolderRepository) Index(r *requests.FolderIndexReqStruct) ([]model.Fo
 
 	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT * FROM folders where id IN (SELECT saved_folders.folder_id FROM saved_folders INNER JOIN folders ON %s order by saved_folders.created_at %s) and name like :query limit :limit offset :offset",filterQuery, order)
+	query := fmt.Sprintf("SELECT * FROM folders where id IN (SELECT saved_folders.folder_id FROM saved_folders INNER JOIN folders ON %s order by saved_folders.created_at %s) and name like :query order by %s %s limit :limit offset :offset",filterQuery, order, r.OrderBy, order)
 
 	searchStringCount := fmt.Sprintf("FROM folders where id IN (SELECT saved_folders.folder_id FROM saved_folders INNER JOIN folders ON %s order by saved_folders.created_at %s) and name like :query",filterQuery, order)
 

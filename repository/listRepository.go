@@ -65,7 +65,7 @@ func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListM
 
 	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT * FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON %s order by saved_lists.created_at %s) and name like :query limit :limit offset :offset", filterQuery, order)
+	query := fmt.Sprintf("SELECT * FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON %s order by saved_lists.created_at %s) and name like :query order by %s %s limit :limit offset :offset", filterQuery, order,r.OrderBy, order)
 
 	searchStringCount := fmt.Sprintf("FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON %s order by saved_lists.created_at %s) and name like :query", filterQuery, order)
 
