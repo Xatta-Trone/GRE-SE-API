@@ -386,8 +386,8 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 		return
 	}
 
-	// now attach the user in the list meta 
-	user,_ := ctl.userRepo.FindOne(int(list.UserId))
+	// now attach the user in the list meta
+	user, _ := ctl.userRepo.FindOne(int(list.UserId))
 
 	list.User = &user
 
@@ -409,17 +409,10 @@ func (ctl *ListsController) Update(c *gin.Context) {
 		return
 	}
 
-	userIdString := c.GetString("user_id")
-
-	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "user id not found"})
-		return
-	}
-
-	userId, err := strconv.ParseUint(userIdString, 10, 64)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "No user found."})
 		return
 	}
 
@@ -478,14 +471,7 @@ func (ctl *ListsController) Delete(c *gin.Context) {
 		return
 	}
 
-	userIdString := c.GetString("user_id")
-
-	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "user id not found"})
-		return
-	}
-
-	userId, err := strconv.ParseUint(userIdString, 10, 64)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
@@ -634,14 +620,7 @@ func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 		return
 	}
 
-	userIdString := c.GetString("user_id")
-
-	if userIdString == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "user id not found"})
-		return
-	}
-
-	userId, err := strconv.ParseUint(userIdString, 10, 64)
+	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
@@ -684,6 +663,67 @@ func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, gin.H{
 		"deleted": true,
+	})
+
+}
+
+func (ctl *ListsController) FoldersInList(c *gin.Context) {
+
+	// validate the given slug
+	slug := c.Param("slug")
+
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+		return
+	}
+
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "No user found."})
+		return
+	}
+
+	// get the data
+	list, err := ctl.repository.FindOneBySlug(slug)
+
+	if err == sql.ErrNoRows {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"errors": "No list found."})
+		return
+	}
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	if list.UserId != userId {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"errors": "You are not the owner of this set."})
+		return
+	}
+
+	folderIds := []uint64{}
+
+	folders, err := ctl.repository.FoldersByListId(list.Id, userId)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusOK, gin.H{
+			"folders": folderIds,
+		})
+		return
+	}
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	for _, v := range folders {
+		folderIds = append(folderIds, v.FolderId)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"folders": folderIds,
 	})
 
 }
