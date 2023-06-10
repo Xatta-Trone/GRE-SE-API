@@ -63,6 +63,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.PATCH("/folders/:id",folderController.Update)
 	authRoutes.DELETE("/folders/:id",folderController.Delete)
 	authRoutes.POST("/folders/:id/toggle-list",folderController.ToggleList)
+	authRoutes.GET("/folders/:id/lists",folderController.ListsInFolder)
 
 	// saved items 
 	authRoutes.GET("/saved-lists",listController.SavedLists)

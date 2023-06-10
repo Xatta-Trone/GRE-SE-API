@@ -688,3 +688,66 @@ func (ctl *FolderController) ToggleList(c *gin.Context) {
 	})
 
 }
+
+func (ctl *FolderController) ListsInFolder(c *gin.Context) {
+
+	// validate the given slug
+	// get the folder id
+	folderId, err := utils.ParseParamToUint64(c, "id")
+
+	if err != nil {
+		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
+		return
+	}
+
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "No user found."})
+		return
+	}
+
+	// get the data
+	folder, err := ctl.repository.FindOne(folderId)
+
+	if err == sql.ErrNoRows {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"errors": "No result found."})
+		return
+	}
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	if folder.UserId != userId {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"errors": "You are not the owner of this folder."})
+		return
+	}
+
+	listIds := []uint64{}
+
+	lists, err := ctl.repository.ListIdsByFolderId(folder.Id, userId)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusOK, gin.H{
+			"lists": listIds,
+		})
+		return
+	}
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	for _, v := range lists {
+		listIds = append(listIds, v.ListId)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"lists": listIds,
+	})
+
+}

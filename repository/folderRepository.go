@@ -28,6 +28,8 @@ type FolderRepositoryInterface interface {
 	DeleteSavedFolder(userId, folderId uint64) (bool, error)
 	ToggleList(folderId, listId uint64) (bool, error)
 	GetCount(ids []uint64) ([]model.FolderListRelationModel, error)
+	ListIdsByFolderId(folderId, userId uint64) ([]model.FolderListRelationModel, error)
+
 }
 type FolderRepository struct {
 	Db *sqlx.DB
@@ -527,4 +529,33 @@ func (rep *FolderRepository) GetCount(ids []uint64) ([]model.FolderListRelationM
 
 	return models, nil
 
+}
+
+func (rep *FolderRepository) ListIdsByFolderId(folderId, userId uint64) ([]model.FolderListRelationModel, error) {
+	models := []model.FolderListRelationModel{}
+
+	queryMap := map[string]interface{}{"user_id": userId, "folder_id": folderId}
+
+	// get folders created by this user 
+	// select the filter 
+	fmt.Println(folderId)
+
+	// I am using named execution to make it more clear
+	query := "SELECT list_id FROM folder_list_relation where folder_id = :folder_id "
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	err = nstmt.Select(&models, queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return models, err
+	}
+
+	return models, nil
 }
