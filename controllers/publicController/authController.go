@@ -3,6 +3,8 @@ package publicController
 import (
 	"database/sql"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -98,6 +100,17 @@ func (ctl *AuthController) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 		return
 	}
+
+	// set the cookie
+	ttl := os.Getenv("AUTH_TTL")
+	ttlValue, _ := strconv.Atoi(ttl)
+	cookieDomain := os.Getenv("COOKIE_URL")
+
+	if cookieDomain == "" {
+		cookieDomain = "localhost"
+	}
+
+	c.SetCookie("grese_token", token, ttlValue, "/", cookieDomain, false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,

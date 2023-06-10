@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -16,6 +17,15 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		// get the token
 		token = c.Query("token")
+
+		// parse from cookie
+		if token == "" {
+			// get the token from header
+			token, _ := c.Cookie("grese_token")
+
+			fmt.Println(token)
+
+		}
 
 		if token == "" {
 			// get the token from header

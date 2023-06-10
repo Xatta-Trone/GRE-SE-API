@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +19,15 @@ func PublicAuthMiddleware() gin.HandlerFunc {
 
 		// get the token
 		token = c.Query("token")
+
+		// parse from cookie
+		if token == "" {
+			// get the token from header
+			token, _ = c.Cookie("grese_token")
+
+			fmt.Println(token)
+
+		}
 
 		if token == "" {
 			// get the token from header
