@@ -47,7 +47,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// fmt.Println(token)
 
 		if token == "" {
-			c.AbortWithStatusJSON(401, gin.H{"errors": "token missing"})
+			c.AbortWithStatusJSON(401, gin.H{"errors": "token missing.."})
 			return
 		}
 

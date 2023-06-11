@@ -54,6 +54,7 @@ func main() {
 	config := cors.DefaultConfig()
 	config.AllowHeaders = append(config.AllowHeaders, "Authorization")
 	config.AllowAllOrigins = true
+	config.AllowCredentials = true
 	r.Use(cors.New(config))
 
 	r.MaxMultipartMemory = 8 << 20 // 8 MiB

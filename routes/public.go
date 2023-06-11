@@ -31,8 +31,9 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	public.POST("login", authController.Login)
 
 	// public lists 
-	public.GET("/public-lists",listController.PublicLists)
-	public.GET("/public-folders",folderController.PublicFolders)
+	lists := r.Group("/").Use(middlewares.OptionalAuthMiddleware())
+	lists.GET("/public-lists",listController.PublicLists)
+	lists.GET("/public-folders",folderController.PublicFolders)
 
 	// public.GET("@:name", func(ctx *gin.Context) {
 	// 	name := ctx.Param("name")
@@ -42,13 +43,14 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes := r.Group("/").Use(middlewares.PublicAuthMiddleware())
 
 	authRoutes.GET("/me", authController.Me)
+	authRoutes.POST("/lg", authController.Logout)
 	authRoutes.PUT("/update", authController.Update)
 	authRoutes.PATCH("/update", authController.Update)
 
 	// lists
 	authRoutes.GET("/lists", listController.Index)
 	authRoutes.POST("/lists", listController.Create)
-	authRoutes.GET("/lists/:slug", listController.FindOne)
+	lists.GET("/lists/:slug", listController.FindOne)
 	authRoutes.PUT("/lists/:slug", listController.Update)
 	authRoutes.PATCH("/lists/:slug", listController.Update)
 	authRoutes.DELETE("/lists-word/:slug", listController.DeleteWordInList)

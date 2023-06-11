@@ -202,3 +202,19 @@ func (ctl *AuthController) Update(c *gin.Context) {
 	})
 
 }
+
+func (ctl *AuthController) Logout(c *gin.Context) {
+	// set the cookie
+	cookieDomain := os.Getenv("COOKIE_URL")
+
+	if cookieDomain == "" {
+		cookieDomain = "localhost"
+	}
+
+	c.SetCookie("grese_token", "deleted", -1, "/", cookieDomain, false, true)
+
+	c.JSON(http.StatusNoContent, gin.H{
+		"token": "deleted",
+	})
+	
+}
