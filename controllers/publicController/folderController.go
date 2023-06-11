@@ -358,6 +358,10 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 		return
 	}
 
+	// get the user data of this folder
+	user, _ := ctl.userRepo.FindOne(int(folder.UserId))
+	folder.User = &user
+
 	// make a temporary variable to copy the result then export via gin
 	listsToExport := make([]model.ListModel, 0)
 	userIds := []uint64{}
@@ -411,12 +415,7 @@ func (ctl *FolderController) FindOne(c *gin.Context) {
 		listsToExport = append(listsToExport, f)
 	}
 
-	// get the user data of this folder 
-	user,_ := ctl.userRepo.FindOne(int(folder.UserId))
-
-	folder.User = &user
-
-	// get the total folder count 
+	// get the total folder count
 
 	c.JSON(200, gin.H{
 		"lists":  listsToExport,
