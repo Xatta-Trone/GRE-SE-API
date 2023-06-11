@@ -86,7 +86,7 @@ func PublicAuthMiddleware() gin.HandlerFunc {
 		userData := newJsonToken.Get("user")
 		var user model.UserModel
 
-		err = json.Unmarshal([]byte(userData),&user)
+		err = json.Unmarshal([]byte(userData), &user)
 
 		if err == nil {
 			c.Set("user", user)
@@ -134,9 +134,10 @@ func OptionalAuthMiddleware() gin.HandlerFunc {
 		// fmt.Println(token)
 
 		if token == "" {
-			 c.Next()
-			 return
-			
+			c.Set("user_id", "NOT_FOUND")
+			c.Next()
+			return
+
 		}
 
 		// now decode token
@@ -173,7 +174,7 @@ func OptionalAuthMiddleware() gin.HandlerFunc {
 		userData := newJsonToken.Get("user")
 		var user model.UserModel
 
-		err = json.Unmarshal([]byte(userData),&user)
+		err = json.Unmarshal([]byte(userData), &user)
 
 		if err == nil {
 			c.Set("user", user)

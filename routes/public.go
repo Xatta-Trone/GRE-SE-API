@@ -60,7 +60,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	// folders 
 	authRoutes.GET("/folders",folderController.Index)
 	authRoutes.POST("/folders",folderController.Create)
-	authRoutes.GET("/folders/:id",folderController.FindOne)
+	lists.GET("/folders/:id",folderController.FindOne)
 	authRoutes.PUT("/folders/:id",folderController.Update)
 	authRoutes.PATCH("/folders/:id",folderController.Update)
 	authRoutes.DELETE("/folders/:id",folderController.Delete)
