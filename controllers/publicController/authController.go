@@ -111,6 +111,8 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	}
 
 	c.SetCookie("grese_token", token, ttlValue, "/", cookieDomain, false, true)
+	// set a cookie domain to localhost too...for development
+	c.SetCookie("grese_token", token, ttlValue, "/", "localhost", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,

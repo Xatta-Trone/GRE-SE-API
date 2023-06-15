@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -53,8 +54,27 @@ func main() {
 	r := gin.Default()
 	config := cors.DefaultConfig()
 	config.AllowHeaders = append(config.AllowHeaders, "Authorization")
-	config.AllowAllOrigins = true
 	config.AllowCredentials = true
+	// config.AllowOrigins = []string{"http://localhost:*"}
+	// config.AllowAllOrigins = true
+	config.AllowOriginFunc = func(origin string) bool {
+		// get allowed origin domains from env
+		originsFromEnv := os.Getenv("ALLOW_ORIGIN_DOMAINS")
+		origins := []string{"localhost","gre-sentence-equivalence.com"}
+		isAllowedThisOrigin := false
+
+		origins = append(origins, strings.Split(originsFromEnv, ",")...)
+
+		for _, allowedOrigin := range origins {
+			if strings.Contains(origin, allowedOrigin) {
+				isAllowedThisOrigin = true
+				break
+			}
+		}
+
+		return isAllowedThisOrigin
+	}
+	
 	r.Use(cors.New(config))
 
 	r.MaxMultipartMemory = 8 << 20 // 8 MiB
