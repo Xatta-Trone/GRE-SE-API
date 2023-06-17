@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/services"
@@ -60,8 +59,6 @@ func (ctl *AuthController) Register(c *gin.Context) {
 }
 
 func (ctl *AuthController) Login(c *gin.Context) {
-	user := model.UserModel{}
-
 	// validation request it is also in the admin user create request
 	req, errs := requests.UsersCreateRequest(c)
 
@@ -94,7 +91,7 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	}
 
 	// record found, now issue a token
-	token, err := ctl.authService.GenerateTokenFromEmail(user)
+	token, exp, err := ctl.authService.GenerateTokenFromEmail(user)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
@@ -112,10 +109,11 @@ func (ctl *AuthController) Login(c *gin.Context) {
 
 	c.SetCookie("grese_token", token, ttlValue, "/", cookieDomain, false, true)
 	// set a cookie domain to localhost too...for development
-	c.SetCookie("grese_token", token, ttlValue, "/", "localhost", false, true)
+	// c.SetCookie("grese_token", token, ttlValue, "/", "localhost", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
+		"exp":   exp,
 		"user":  user,
 	})
 
@@ -218,5 +216,5 @@ func (ctl *AuthController) Logout(c *gin.Context) {
 	c.JSON(http.StatusNoContent, gin.H{
 		"token": "deleted",
 	})
-	
+
 }

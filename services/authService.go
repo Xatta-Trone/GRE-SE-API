@@ -12,7 +12,7 @@ import (
 )
 
 type AuthInterface interface {
-	 GenerateTokenFromEmail(user model.UserModel) (string, error)
+	 GenerateTokenFromEmail(user model.UserModel) (string, time.Time, error)
 	//  ValidateToken(s string) string
 }
 
@@ -25,7 +25,7 @@ func NewAuthService()*AuthService{
 }
 
 
-func (a *AuthService) GenerateTokenFromEmail(user model.UserModel) (string, error) {
+func (a *AuthService) GenerateTokenFromEmail(user model.UserModel) (string, time.Time, error) {
 
 	// get the key
 	key := os.Getenv("AUTH_KEY")
@@ -78,7 +78,7 @@ func (a *AuthService) GenerateTokenFromEmail(user model.UserModel) (string, erro
 		panic(err)
 	}
 
-	return token, nil
+	return token,exp, nil
 
 }
 
