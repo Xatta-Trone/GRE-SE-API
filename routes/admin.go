@@ -39,6 +39,10 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	listService := services.NewListProcessorService(database.Gdb)
 	listController := controllers.NewListsController(listRepo, listService, wordRepo, usersRepo)
 
+	// coupon
+	couponRepo := repository.NewCouponRepository(database.Gdb)
+	couponController := controllers.NewAdminCouponController(couponRepo)
+
 	admin := r.Group("/admin")
 
 	admin.Use(middlewares.SetAdminScope())
@@ -146,6 +150,12 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	admin.PATCH("/lists/:id", listController.Update)
 	admin.DELETE("/lists/:id", listController.Delete)
 	admin.DELETE("/lists-word/:slug", listController.DeleteWordInList)
+
+	// coupons 
+	admin.GET("coupons",couponController.Index)
+	admin.POST("coupons",couponController.Create)
+	admin.DELETE("coupons/:id",couponController.Delete)
+
 
 	return r
 
