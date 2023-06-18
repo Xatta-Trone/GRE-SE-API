@@ -12,8 +12,9 @@ import (
 func PublicRoutes(r *gin.Engine) *gin.Engine {
 	// init services
 	userRepo := repository.NewUserRepository(database.Gdb)
+	couponRepo := repository.NewCouponRepository(database.Gdb)
 	authService := services.NewAuthService()
-	authController := publicController.NewAuthController(userRepo, authService)
+	authController := publicController.NewAuthController(userRepo, authService,couponRepo)
 
 	// list controller
 	listRepo := repository.NewListRepository(database.Gdb)
@@ -50,6 +51,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.POST("/lg", authController.Logout)
 	authRoutes.PUT("/update", authController.Update)
 	authRoutes.PATCH("/update", authController.Update)
+	authRoutes.POST("upgrade-user",authController.Upgrade)
 
 	// lists
 	authRoutes.GET("/lists", listController.Index)
@@ -85,6 +87,8 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.GET("learning-status/:list_id",learningStatusController.Index)
 	authRoutes.POST("learning-status",learningStatusController.Update)
 	authRoutes.DELETE("learning-status/:list_id",learningStatusController.Delete)
+
+	
 	
 
 	return r

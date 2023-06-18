@@ -22,6 +22,7 @@ type UserRepositoryInterface interface {
 	Create(req *requests.UsersCreateRequestStruct) (model.UserModel, error)
 	Update(id int, req *requests.UsersUpdateRequestStruct) (bool, error)
 	UpdateUserName(id uint64, username string) (bool, error)
+	UpdateExpiresOn(expires_on time.Time, id uint64) (bool, error)
 }
 
 type UserRepository struct {
@@ -37,14 +38,14 @@ func (rep *UserRepository) Index(r requests.UsersIndexReqStruct) ([]model.UserMo
 	models := []model.UserModel{}
 	count := model.CountModel{}
 
-	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy,"order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage}
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage}
 
 	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	
+
 	searchString := "FROM users where name like :query or email like :query or username like :query  and id > :id"
 
-	query := fmt.Sprintf("SELECT id,name,email,username,created_at,updated_at %s order by %s %s limit :limit offset :offset", searchString,r.OrderBy, order)
+	query := fmt.Sprintf("SELECT id,name,email,username,created_at,updated_at %s order by %s %s limit :limit offset :offset", searchString, r.OrderBy, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -112,7 +113,7 @@ func (rep *UserRepository) FindOne(id int) (model.UserModel, error) {
 
 	queryMap := map[string]interface{}{"id": id}
 
-	query := "SELECT id,name,email,username,created_at FROM users where id=:id"
+	query := "SELECT id,name,email,username,created_at,expires_on FROM users where id=:id"
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -137,7 +138,7 @@ func (rep *UserRepository) FindOneByEmail(email string) (model.UserModel, error)
 
 	queryMap := map[string]interface{}{"email": email}
 
-	query := "SELECT id,name,email,username,created_at FROM users where email=:email"
+	query := "SELECT id,name,email,username,created_at,expires_on FROM users where email=:email"
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -285,6 +286,39 @@ func (rep *UserRepository) UpdateUserName(id uint64, username string) (bool, err
 	queryMap := map[string]interface{}{"id": id, "username": username, "updated_at": time.Now().UTC()}
 
 	res, err := rep.Db.NamedExec("Update users set username=:username,updated_at=:updated_at where id=:id", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	if rows == 0 {
+		return false, sql.ErrNoRows
+	}
+
+	if rows != 1 {
+		return false, fmt.Errorf("number of rows affected %d", rows)
+	}
+
+	return true, nil
+
+}
+
+
+func (rep *UserRepository) UpdateExpiresOn(expires_on time.Time, id uint64) (bool, error) {
+
+	queryMap := map[string]interface{}{"id": id, "expires_on": expires_on, "updated_at": time.Now().UTC()}
+
+	fmt.Println(queryMap["expires_on"])
+
+	res, err := rep.Db.NamedExec("Update users set expires_on=:expires_on,updated_at=:updated_at where id=:id", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)

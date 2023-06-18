@@ -9,4 +9,5 @@ type CouponModel struct {
 	Used    int        `json:"used"`
 	MaxUse  *int       `json:"max_use" db:"max_use"`
 	Expires *time.Time `json:"expires" db:"expires"`
+	Months  int        `json:"months"`
 }

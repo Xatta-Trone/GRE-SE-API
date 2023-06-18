@@ -6,18 +6,18 @@ import (
 )
 
 type CouponCreateRequestStruct struct {
-	Coupon string `json:"coupon" form:"coupon" `
-	MaxUse int    `json:"max_use" form:"max_use" `
-	Months int    `json:"months" form:"months" `
+	Coupon  string `json:"coupon" form:"coupon" `
+	MaxUse  int    `json:"max_use" form:"max_use" `
+	Months  int    `json:"months" form:"months" `
+	Expires string `json:"expires" form:"expires" `
 }
 
 func (c CouponCreateRequestStruct) Validate() error {
 	return validation.ValidateStruct(&c,
 		validation.Field(&c.Coupon, validation.Required),
 		validation.Field(&c.MaxUse, validation.Required),
+		validation.Field(&c.Months, validation.Required),
 	)
-
-	return nil
 }
 
 func CouponCreateRequest(c *gin.Context) (CouponCreateRequestStruct, error) {
