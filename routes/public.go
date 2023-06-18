@@ -25,6 +25,10 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	folderRepo := repository.NewFolderRepository(database.Gdb)
 	folderController := publicController.NewFolderController(folderRepo,listRepo,userRepo)
 
+	// learning status 
+	learningStatusRepo := repository.NewLearningStatusRepository(database.Gdb)
+	learningStatusController := publicController.NewLearningStatusController(learningStatusRepo)
+
 	public := r.Group("/")
 
 	public.POST("/register", authController.Register)
@@ -75,6 +79,12 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.GET("/saved-folders",folderController.SavedFolders)
 	authRoutes.POST("/saved-folders/:folder_id",folderController.SaveFolder)
 	authRoutes.DELETE("/saved-folders/:folder_id",folderController.DeleteSaveFolder)
+
+	// learning status 
+	authRoutes.POST("learning-status",learningStatusController.Update)
+	authRoutes.DELETE("learning-status",learningStatusController.Delete)
+	
+
 
 	return r
 }
