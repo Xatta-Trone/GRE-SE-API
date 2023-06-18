@@ -14,6 +14,7 @@ type WordIndexByListIdReqStruct struct {
 	PerPage int    `form:"per_page,default=50" json:"per_page"`
 	Total   int    `json:"total"`
 	ListId  uint64 `json:"list_id"`
+	WordIds string `form:"word_ids" json:"word_ids,omitempty"`
 }
 
 func (c WordIndexByListIdReqStruct) Validate() error {
@@ -22,7 +23,6 @@ func (c WordIndexByListIdReqStruct) Validate() error {
 		validation.Field(&c.OrderBy, validation.Required, validation.In("desc", "asc")),
 		validation.Field(&c.Page, validation.Required),
 		validation.Field(&c.PerPage, validation.Required),
-
 	)
 }
 

@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"fmt"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/requests"
@@ -102,7 +100,7 @@ func (rep *LearningStatusRepository) FindLearningStatusByListId(listId, userId u
 	learningStatuses := []model.LearningStatusModel{}
 	queryMap := map[string]interface{}{"list_id": listId, "user_id": userId}
 
-	query := fmt.Sprintf("SELECT word_id, learning_state FROM learning_status where list_id=:list_id and user_id=:user_id order by word_id asc")
+	query := "SELECT word_id, learning_state FROM learning_status where list_id=:list_id and user_id=:user_id order by word_id asc"
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 

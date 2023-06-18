@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/enums"
@@ -380,6 +381,88 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 
 	// get the data
 	words, err := ctl.wordRepo.FindAllByListId(req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// now attach the user in the list meta
+	user, _ := ctl.userRepo.FindOne(int(list.UserId))
+
+	list.User = &user
+
+	c.JSON(200, gin.H{
+		"list_meta": list,
+		"words":     words,
+		"meta":      req,
+	})
+
+}
+
+func (ctl *ListsController) FindWords(c *gin.Context) {
+
+	// validate the given slug
+	slug := c.Param("slug")
+
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+		return
+	}
+
+	userId, _ := utils.GetUserId(c)
+
+	// get the data
+	list, err := ctl.repository.FindOneBySlug(slug)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// check permissions and visibility
+	if list.Visibility != enums.ListVisibilityPublic && userId != list.UserId {
+		c.JSON(http.StatusForbidden, gin.H{"errors": "The list either not public or deleted."})
+		return
+	}
+
+	// all good now get the word data
+	// validation request
+	req, errs := requests.WordIndexByListIdRequest(c)
+
+	fmt.Println(req)
+
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
+		return
+	}
+	// set the list id
+	req.ListId = list.Id
+
+	// word ids
+	wordIdx := []string{}
+
+	if req.WordIds != "" {
+
+		for _, wordId := range strings.Split(req.WordIds, ",") {
+			wordIdx = append(wordIdx, wordId)
+		}
+
+	}
+
+	// check word id
+	if len(wordIdx) == 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": fmt.Errorf("please provide word ids of this list")})
+		return
+	}
+
+	// get the data
+	words, err := ctl.wordRepo.FindWordsById(wordIdx, req)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
