@@ -81,10 +81,10 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.DELETE("/saved-folders/:folder_id",folderController.DeleteSaveFolder)
 
 	// learning status 
+	authRoutes.GET("learning-status/:list_id",learningStatusController.Index)
 	authRoutes.POST("learning-status",learningStatusController.Update)
-	authRoutes.DELETE("learning-status",learningStatusController.Delete)
+	authRoutes.DELETE("learning-status/:list_id",learningStatusController.Delete)
 	
-
 
 	return r
 }
