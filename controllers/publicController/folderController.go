@@ -124,6 +124,15 @@ func (ctl *FolderController) PublicFolders(c *gin.Context) {
 		return
 	}
 
+	// check if username is given
+	if req.UserName != "" {
+		// get the user
+		user, err := ctl.userRepo.FindOneByUserName(req.UserName)
+		if err == nil {
+			req.UserId = user.ID
+		}
+	}
+
 	folders, err := ctl.repository.PublicIndex(req)
 
 	if err != nil {

@@ -13,6 +13,7 @@ type PublicFolderIndexReqStruct struct {
 	Page    int    `form:"page,default=1" json:"page"`
 	PerPage int    `form:"per_page,default=20" json:"per_page"`
 	UserId  uint64 `json:"user_id,omitempty"`
+	UserName string `json:"user_name,omitempty" form:"user_name"`
 	Count   int64  `form:"count" json:"count"`
 }
 

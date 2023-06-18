@@ -149,6 +149,15 @@ func (ctl *ListsController) PublicLists(c *gin.Context) {
 		return
 	}
 
+	// check if username is given
+	if req.UserName != "" {
+		// get the user
+		user, err := ctl.userRepo.FindOneByUserName(req.UserName)
+		if err == nil {
+			req.UserId = user.ID
+		}
+	}
+
 	// get the data
 	lists, err := ctl.repository.PublicIndex(req)
 
