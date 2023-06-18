@@ -3,7 +3,6 @@ package controllers
 import (
 	"database/sql"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"strconv"
 
@@ -26,17 +25,17 @@ func NewAdminCouponController(repository repository.CouponInterface) *AdminCoupo
 func (ctl *AdminCouponController) Index(c *gin.Context) {
 
 	// validation request
-	// req, errs := requests.WordsIndexRequest(c)
+	req, errs := requests.CouponIndexRequest(c)
 
 	// fmt.Println(req)
 
-	// if errs != nil {
-	// 	c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
-	// 	return
-	// }
+	if errs != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})
+		return
+	}
 
 	// // get the data
-	word, err := ctl.repository.Index()
+	coupons, err := ctl.repository.Index(req)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
@@ -44,8 +43,8 @@ func (ctl *AdminCouponController) Index(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"data": word,
-		"meta": "",
+		"data": coupons,
+		"meta": req,
 	})
 
 }
@@ -103,16 +102,16 @@ func (ctl *AdminCouponController) Delete(c *gin.Context) {
 
 }
 
-func generateToken(n int) string {
+// func generateToken(n int) string {
 
-	if n == 0 {
-		n = 8
-	}
+// 	if n == 0 {
+// 		n = 8
+// 	}
 
-	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
+// 	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
+// 	b := make([]rune, n)
+// 	for i := range b {
+// 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+// 	}
+// 	return string(b)
+// }

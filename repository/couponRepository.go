@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -10,7 +11,7 @@ import (
 )
 
 type CouponInterface interface {
-	Index() ([]model.CouponModel, error)
+	Index(req *requests.CouponIndexRequestStruct) ([]model.CouponModel, error)
 	Create(req requests.CouponCreateRequestStruct, coupon string) (int64, error)
 	FindOne(id uint64) (model.CouponModel, error)
 	FindByCoupon(coupon string) (model.CouponModel, error)
@@ -25,12 +26,19 @@ func NewCouponRepository(db *sqlx.DB) *CouponRepository {
 	return &CouponRepository{Db: db}
 }
 
-func (rep *CouponRepository) Index() ([]model.CouponModel, error) {
+func (rep *CouponRepository) Index(r *requests.CouponIndexRequestStruct) ([]model.CouponModel, error) {
 
 	models := []model.CouponModel{}
-	queryMap := map[string]interface{}{}
+	count := model.CountModel{}
 
-	query := "select * from coupons order by id desc"
+	queryMap := map[string]interface{}{"coupon": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage}
+
+	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+
+	searchString := "FROM coupons where coupon like :coupon and id > :id"
+
+	// I am using named execution to make it more clear
+	query := fmt.Sprintf("SELECT id,coupon,user_id,expires,used,max_use %s order by id %s limit :limit offset :offset", searchString, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -44,6 +52,13 @@ func (rep *CouponRepository) Index() ([]model.CouponModel, error) {
 		utils.Errorf(err)
 		return models, err
 	}
+
+	// get the counts
+	queryCount := fmt.Sprintf("SELECT count(id) as count %s limit 1", searchString)
+	nstmt1, _ := rep.Db.PrepareNamed(queryCount)
+	_ = nstmt1.Get(&count, queryMap)
+
+	r.Count = count.Count
 
 	return models, nil
 
