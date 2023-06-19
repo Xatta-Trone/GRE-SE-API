@@ -257,7 +257,7 @@ func (ctl *AuthController) Upgrade(c *gin.Context) {
 	today := time.Now().UTC()
 	if user.ExpiresOn != nil {
 		fmt.Println(today.After(*user.ExpiresOn))
-		if today.After(*user.ExpiresOn) {
+		if today.Before(*user.ExpiresOn) {
 			c.JSON(http.StatusBadRequest, gin.H{"errors": "you already have a ongoing subscription" })
 			return
 		}
