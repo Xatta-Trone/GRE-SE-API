@@ -52,6 +52,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.PUT("/update", authController.Update)
 	authRoutes.PATCH("/update", authController.Update)
 	authRoutes.POST("upgrade-user",authController.Upgrade)
+	authRoutes.GET("upgrade-user",authController.PurchaseSuccess)
 
 	// lists
 	authRoutes.GET("/lists", listController.Index)

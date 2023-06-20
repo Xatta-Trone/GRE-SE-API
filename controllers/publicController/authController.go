@@ -308,3 +308,64 @@ func (ctl *AuthController) Upgrade(c *gin.Context) {
 	})
 
 }
+
+func (ctl *AuthController) PurchaseSuccess(c *gin.Context) {
+
+	// find the user
+	email := c.GetString("email")
+
+	if email == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"errors": "Unauthenticated."})
+		return
+	}
+
+	// record found, now issue a token
+	user, err := ctl.userRepo.FindOneByEmail(email)
+
+	if err == sql.ErrNoRows {
+		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil {
+		fmt.Println(err.Error())
+		utils.Errorf(err)
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	fmt.Println(user.ExpiresOn)
+
+	// check already premium user
+	// check if premium expired
+	today := time.Now().UTC()
+	if user.ExpiresOn != nil {
+		fmt.Println(today.After(*user.ExpiresOn))
+		if today.Before(*user.ExpiresOn) {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "you already have a ongoing subscription" })
+			return
+		}
+	}
+
+	expires := time.Now().UTC().AddDate(0, 5, 0)
+	ok, err := ctl.userRepo.UpdateExpiresOn(expires, user.ID)
+
+	if err != nil {
+		utils.Errorf(err)
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "there was a problem updating profile."})
+		return
+	}
+
+	user, _ = ctl.userRepo.FindOneByEmail(email)
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": user,
+	})
+
+}
