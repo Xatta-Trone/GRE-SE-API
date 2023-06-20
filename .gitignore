@@ -3,3 +3,4 @@ uploads/*.csv
 .env
 app
 db-data/mysql
+*.exe
