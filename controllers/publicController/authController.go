@@ -110,6 +110,8 @@ func (ctl *AuthController) Login(c *gin.Context) {
 
 	if cookieDomain == "" {
 		cookieDomain = "localhost"
+	} else {
+		cookieDomain = fmt.Sprintf(".%s",cookieDomain)
 	}
 
 	c.SetCookie("grese_token", token, ttlValue, "/", cookieDomain, false, true)
