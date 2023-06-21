@@ -213,12 +213,12 @@ func (rep *WordRepository) FindAllByListId(r *requests.WordIndexByListIdReqStruc
 
 	words := []model.WordModel{}
 
-	queryMap := map[string]interface{}{"word": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "list_id": r.ListId}
+	queryMap := map[string]interface{}{"word": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "list_id": r.ListId}
 
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT id,word,word_data,is_reviewed,created_at,updated_at FROM words where id IN (SELECT word_id FROM list_word_relation WHERE list_id = :list_id) order by id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT id,word,word_data,is_reviewed,created_at,updated_at FROM words where id IN (SELECT word_id FROM list_word_relation WHERE list_id = :list_id) order by %s %s limit :limit offset :offset", r.Order, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
