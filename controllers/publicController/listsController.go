@@ -346,18 +346,19 @@ func (ctl *ListsController) SaveListItem(c *gin.Context) {
 
 func (ctl *ListsController) FindOne(c *gin.Context) {
 
-	// validate the given slug
-	slug := c.Param("slug")
+	// get the folder id
+	listId, err := utils.ParseParamToUint64(c, "id")
 
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+	if err != nil {
+		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
 		return
 	}
 
 	userId, _ := utils.GetUserId(c)
 
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(listId)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
@@ -411,18 +412,19 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 
 func (ctl *ListsController) FindWords(c *gin.Context) {
 
-	// validate the given slug
-	slug := c.Param("slug")
+	// get the folder id
+	listId, err := utils.ParseParamToUint64(c, "id")
 
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+	if err != nil {
+		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
 		return
 	}
 
 	userId, _ := utils.GetUserId(c)
 
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(listId)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
@@ -493,11 +495,12 @@ func (ctl *ListsController) FindWords(c *gin.Context) {
 
 func (ctl *ListsController) Update(c *gin.Context) {
 
-	// validate the given slug
-	slug := c.Param("slug")
+	// get the folder id
+	listId, err := utils.ParseParamToUint64(c, "id")
 
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+	if err != nil {
+		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
 		return
 	}
 
@@ -509,7 +512,7 @@ func (ctl *ListsController) Update(c *gin.Context) {
 	}
 
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(listId)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
@@ -555,11 +558,12 @@ func (ctl *ListsController) Update(c *gin.Context) {
 
 func (ctl *ListsController) Delete(c *gin.Context) {
 
-	// validate the given slug
-	slug := c.Param("slug")
+	// get the folder id
+	listId, err := utils.ParseParamToUint64(c, "id")
 
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+	if err != nil {
+		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
 		return
 	}
 
@@ -571,7 +575,7 @@ func (ctl *ListsController) Delete(c *gin.Context) {
 	}
 
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(listId)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
@@ -700,13 +704,17 @@ func (ctl *ListsController) DeleteSavedList(c *gin.Context) {
 func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 
 	// validate the given slug
-	slug := c.Param("slug")
-	wordIdTemp := c.Query("word_id")
+	// get the folder id
+	listId, err := utils.ParseParamToUint64(c, "id")
 
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+	if err != nil {
+		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
 		return
 	}
+
+	wordIdTemp := c.Query("word_id")
+
 	if wordIdTemp == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param word id"})
 		return
@@ -720,7 +728,7 @@ func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 	}
 
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(listId)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
@@ -761,11 +769,12 @@ func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 
 func (ctl *ListsController) FoldersInList(c *gin.Context) {
 
-	// validate the given slug
-	slug := c.Param("slug")
+	// get the folder id
+	listId, err := utils.ParseParamToUint64(c, "id")
 
-	if slug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "missing param slug"})
+	if err != nil {
+		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
 		return
 	}
 
@@ -777,7 +786,7 @@ func (ctl *ListsController) FoldersInList(c *gin.Context) {
 	}
 
 	// get the data
-	list, err := ctl.repository.FindOneBySlug(slug)
+	list, err := ctl.repository.FindOne(listId)
 
 	if err == sql.ErrNoRows {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"errors": "No list found."})

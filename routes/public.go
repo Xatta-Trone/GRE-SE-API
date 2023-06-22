@@ -57,13 +57,13 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	// lists
 	authRoutes.GET("/lists", listController.Index)
 	authRoutes.POST("/lists", listController.Create)
-	lists.GET("/lists/:slug", listController.FindOne)
-	authRoutes.PUT("/lists/:slug", listController.Update)
-	authRoutes.PATCH("/lists/:slug", listController.Update)
-	authRoutes.DELETE("/lists-word/:slug", listController.DeleteWordInList)
-	authRoutes.DELETE("/lists/:slug", listController.Delete)
-	authRoutes.GET("/lists/:slug/folders", listController.FoldersInList)
-	authRoutes.POST("/lists/:slug/words", listController.FindWords)
+	lists.GET("/lists/:id", listController.FindOne)
+	authRoutes.PUT("/lists/:id", listController.Update)
+	authRoutes.PATCH("/lists/:id", listController.Update)
+	authRoutes.DELETE("/lists-word/:id", listController.DeleteWordInList)
+	authRoutes.DELETE("/lists/:id", listController.Delete)
+	authRoutes.GET("/lists/:id/folders", listController.FoldersInList)
+	authRoutes.POST("/lists/:id/words", listController.FindWords)
 
 	// folders 
 	authRoutes.GET("/folders",folderController.Index)

@@ -109,8 +109,8 @@ func (rep *ListRepository) PublicIndex(r *requests.PublicListsIndexReqStruct) ([
 		userFilter = "and lists.user_id=:user_id"
 	}
 
-	searchString := fmt.Sprintf("FROM lists INNER JOIN list_word_relation ON list_word_relation.list_id = lists.id where lists.name like :query and lists.visibility=:visibility %s",userFilter)
-	searchStringCount := fmt.Sprintf("FROM lists where lists.name like :query and lists.visibility=:visibility %s",userFilter)
+	searchString := fmt.Sprintf("FROM lists INNER JOIN list_word_relation ON list_word_relation.list_id = lists.id where lists.name like :query and lists.visibility=:visibility %s", userFilter)
+	searchStringCount := fmt.Sprintf("FROM lists where lists.name like :query and lists.visibility=:visibility %s", userFilter)
 
 	query := fmt.Sprintf("SELECT lists.*, COUNT(list_word_relation.word_id) AS word_count %s GROUP BY lists.id order by %s %s limit :limit offset :offset", searchString, queryMap["orderby"], order)
 
@@ -207,11 +207,11 @@ func (rep *ListRepository) ListsByFolderId(r *requests.FolderListIndexReqStruct)
 
 	models := []model.ListModel{}
 
-	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "folder_id": r.FolderId}
+	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId, "folder_id": r.FolderId}
 
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT * FROM lists where (name like :query) and id in (select list_id from folder_list_relation where folder_id = :folder_id ) order by id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT * FROM lists where (name like :query) and id in (select list_id from folder_list_relation where folder_id = :folder_id ) order by %s %s limit :limit offset :offset", r.Order, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
