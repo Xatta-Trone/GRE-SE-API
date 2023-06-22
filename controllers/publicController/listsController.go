@@ -400,7 +400,9 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 	// now attach the user in the list meta
 	user, _ := ctl.userRepo.FindOne(int(list.UserId))
 
-	list.User = &user
+	user2 := model.UserModel{Name: user.Name, UserName: user.UserName,CreatedAt: user.CreatedAt, UpdatedAt:user.UpdatedAt}
+
+	list.User = &user2
 
 	c.JSON(200, gin.H{
 		"list_meta": list,
