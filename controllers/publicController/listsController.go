@@ -711,7 +711,7 @@ func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 
 	if err != nil {
 		utils.Errorf(err)
-		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No list found."})
 		return
 	}
 
