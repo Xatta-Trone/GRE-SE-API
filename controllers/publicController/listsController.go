@@ -419,7 +419,7 @@ func (ctl *ListsController) FindWords(c *gin.Context) {
 
 	if err != nil {
 		utils.Errorf(err)
-		c.JSON(http.StatusNotFound, gin.H{"errors": "No folder found."})
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No list found."})
 		return
 	}
 
@@ -770,6 +770,89 @@ func (ctl *ListsController) DeleteWordInList(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, gin.H{
 		"deleted": true,
+	})
+
+}
+
+func (ctl *ListsController) AddWordsInList(c *gin.Context) {
+
+	// get the list id
+	listId, err := utils.ParseParamToUint64(c, "id")
+
+	if err != nil {
+		utils.Errorf(err)
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No list found."})
+		return
+	}
+
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"errors": "could not parse the user id"})
+		return
+	}
+
+	// get the data
+	list, err := ctl.repository.FindOne(listId)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"errors": "No record found."})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	// check permissions and visibility
+	if userId != list.UserId {
+		c.JSON(http.StatusForbidden, gin.H{"errors": "Unauthorized."})
+		return
+	}
+
+	// request validation
+	req, err := requests.ListWordsUpdateRequest(c)
+
+	fmt.Println(req)
+
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err})
+		return
+	}
+
+	// check if its just word undo
+	if req.WordId > 0 {
+		err := ctl.listService.InsertListWordRelation(int64(req.WordId), int64(listId))
+		if err != nil {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err.Error()})
+			return
+		}
+		// success response
+		c.JSON(http.StatusNoContent, gin.H{})
+		return
+	}
+
+	// check if it is words
+	if req.Words != "" {
+		// process the words
+		words := ctl.listService.GetWordsFromListMetaRecord(req.Words)
+
+		if len(words) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "No words found"})
+			return
+		}
+
+		// send to the processor
+		go ctl.listService.ProcessWordsOfSingleGroup(words, int64(listId))
+		// success response
+		c.JSON(http.StatusNoContent, gin.H{})
+		return
+
+	}
+
+	c.JSON(http.StatusBadRequest, gin.H{
+		"errors": "could not process the words",
 	})
 
 }

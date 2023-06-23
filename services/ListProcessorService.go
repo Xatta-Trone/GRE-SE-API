@@ -27,6 +27,9 @@ func NewListProcessorService(db *sqlx.DB) *ListProcessorService {
 
 type ListProcessorServiceInterface interface {
 	ProcessListMetaRecord(listMeta model.ListMetaModel)
+	InsertListWordRelation(wordId, listId int64) (error)
+	ProcessWordsOfSingleGroup(words []string, listId int64)
+	GetWordsFromListMetaRecord(words string) ([]string)
 }
 
 func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.ListMetaModel) {
@@ -49,7 +52,7 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 	if listMeta.Words != nil {
 		// fire words processor
 		fmt.Println(*listMeta.Words)
-		processedWordStruct := GetWordsFromListMetaRecord(*listMeta.Words)
+		processedWordStruct := listService.GetWordsFromListMetaRecord(*listMeta.Words)
 		words = append(words, processedWordStruct...)
 	}
 
@@ -409,7 +412,7 @@ func (listService *ListProcessorService) InsertListWordRelation(wordId, listId i
 		return err
 	}
 
-	lastId, err := res.LastInsertId()
+	lastId, err := res.RowsAffected()
 
 	if err != nil {
 		utils.Errorf(err)
@@ -417,7 +420,7 @@ func (listService *ListProcessorService) InsertListWordRelation(wordId, listId i
 	}
 
 	if lastId == 0 {
-		return fmt.Errorf("there was a problem with the insertion. last id: %d", lastId)
+		return fmt.Errorf("there was a problem with the insertion. rows affected: %d", lastId)
 	}
 
 	return nil
@@ -451,7 +454,7 @@ func UpdateListMetaRecordStatus(db *sqlx.DB, id uint64, status int) {
 
 }
 
-func GetWordsFromListMetaRecord(words string) []string {
+func (listService *ListProcessorService) GetWordsFromListMetaRecord(words string) []string {
 	var processedWords []string
 
 	// trim white spaces, then split by new line
