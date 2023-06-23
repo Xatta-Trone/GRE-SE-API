@@ -918,3 +918,40 @@ func (ctl *ListsController) FoldersInList(c *gin.Context) {
 	})
 
 }
+
+func (ctl *ListsController) ToggleFolder(c *gin.Context) {
+
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
+
+	fmt.Println(userId)
+
+	// get the folder id
+	listId, err := utils.ParseParamToUint64(c, "id")
+
+	if err != nil {
+		utils.Errorf(err)
+		return
+	}
+
+	// list id
+	folderId := utils.ParseQueryToUint64(c, "folder_id")
+	fmt.Println(folderId)
+
+	ok, err := ctl.repository.ToggleFolder(folderId, listId)
+
+	fmt.Println(ok, err)
+
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, gin.H{
+		"message": "List toggled.",
+	})
+
+}

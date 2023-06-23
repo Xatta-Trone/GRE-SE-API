@@ -64,6 +64,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.POST("/lists-word/:id", listController.AddWordsInList)
 	authRoutes.DELETE("/lists/:id", listController.Delete)
 	authRoutes.GET("/lists/:id/folders", listController.FoldersInList)
+	authRoutes.POST("/lists/:id/toggle-folder", listController.ToggleFolder)
 	authRoutes.POST("/lists/:id/words", listController.FindWords)
 
 	// folders 

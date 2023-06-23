@@ -30,6 +30,7 @@ type ListRepositoryInterface interface {
 	ListsByFolderId(req *requests.FolderListIndexReqStruct) ([]model.ListModel, error)
 	GetCount(ids []uint64) ([]model.ListWordModel, error)
 	FoldersByListId(listId, userId uint64) ([]model.FolderListRelationModel, error)
+	ToggleFolder(folderId, listId uint64) (bool, error)
 }
 
 type ListRepository struct {
@@ -627,4 +628,50 @@ func (rep *ListRepository) FoldersByListId(listId, userId uint64) ([]model.Folde
 	}
 
 	return models, nil
+}
+
+func (rep *ListRepository) ToggleFolder(folderId, listId uint64) (bool, error) {
+	// check if exists
+	modelx := model.FolderListRelationModel{}
+
+	queryMap := map[string]interface{}{"folder_id": folderId, "list_id": int64(listId)}
+
+	query := "SELECT folder_id,list_id FROM folder_list_relation where folder_id=:folder_id and list_id=:list_id"
+
+	nstmt, err := rep.Db.PrepareNamed(query)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+	err = nstmt.Get(&modelx, queryMap)
+
+	fmt.Println(modelx, err)
+
+	if err == sql.ErrNoRows {
+		// insert the record
+		_, err := rep.Db.NamedExec("Insert into folder_list_relation(folder_id,list_id) values(:folder_id,:list_id)", queryMap)
+
+		if err != nil {
+			utils.Errorf(err)
+			return false, err
+		}
+
+		return true, nil
+
+	} else {
+		// delete the record
+		// now delete the folder
+		query := "Delete FROM folder_list_relation where folder_id=:folder_id and list_id=:list_id"
+
+		_, err := rep.Db.NamedExec(query, queryMap)
+
+		if err != nil {
+			utils.Errorf(err)
+			return false, err
+		}
+
+		return true, nil
+	}
+
 }
