@@ -481,13 +481,17 @@ func (ctl *FolderController) Update(c *gin.Context) {
 		return
 	}
 
-	if req.Name != folder.Name {
-		// update the data
-		ok, err := ctl.repository.Update(folder.Id, req)
-		if err != nil || !ok {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-			return
-		}
+	// check if name changed, then update the slug, otherwise keep the original one
+	if req.Name == folder.Name {
+		// slug not changed, keep the original one
+		req.Slug = folder.Slug
+	}
+
+	// update the data
+	ok, err := ctl.repository.Update(folderId, req)
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusNoContent, gin.H{
@@ -691,7 +695,7 @@ func (ctl *FolderController) ToggleList(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusNoContent, gin.H{
 		"message": "List toggled.",
 	})
 

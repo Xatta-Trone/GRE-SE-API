@@ -64,9 +64,10 @@ func (rep *FolderRepository) Index(r *requests.FolderIndexReqStruct) ([]model.Fo
 		filterQuery = filterSavedSql
 	}
 
-	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.Order         // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	saveOrder := r.SaveOrder // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT * FROM folders where id IN (SELECT saved_folders.folder_id FROM saved_folders INNER JOIN folders ON %s order by saved_folders.created_at %s) and name like :query order by %s %s limit :limit offset :offset", filterQuery, order, r.OrderBy, order)
+	query := fmt.Sprintf("SELECT * FROM folders where id IN (SELECT saved_folders.folder_id FROM saved_folders INNER JOIN folders ON %s order by saved_folders.created_at %s) and name like :query order by %s %s limit :limit offset :offset", filterQuery, saveOrder, r.OrderBy, order)
 
 	searchStringCount := fmt.Sprintf("FROM folders where id IN (SELECT saved_folders.folder_id FROM saved_folders INNER JOIN folders ON %s order by saved_folders.created_at %s) and name like :query", filterQuery, order)
 
@@ -305,9 +306,12 @@ func (rep *FolderRepository) FindOne(id uint64) (model.FolderModel, error) {
 
 func (rep *FolderRepository) Update(id uint64, req *requests.FolderUpdateRequestStruct) (bool, error) {
 
-	slug := rep.GenerateUniqueFolderSlug(req.Name, id)
+	if req.Slug == "" {
+		req.Slug = rep.GenerateUniqueFolderSlug(req.Name, id)
 
-	queryMap := map[string]interface{}{"id": id, "name": req.Name, "slug": slug, "visibility": req.Visibility, "updated_at": time.Now().UTC()}
+	}
+
+	queryMap := map[string]interface{}{"id": id, "name": req.Name, "slug": req.Slug, "visibility": req.Visibility, "updated_at": time.Now().UTC()}
 
 	res, err := rep.Db.NamedExec("Update folders set name=:name,slug=:slug,visibility=:visibility,updated_at=:updated_at where id=:id", queryMap)
 

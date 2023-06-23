@@ -7,9 +7,10 @@ import (
 )
 
 type FolderUpdateRequestStruct struct {
-	Name       string  `json:"name" form:"name" `
-	Visibility int     `json:"visibility" form:"visibility,default=1" `
-	UserId     uint64  `json:"user_id" form:"user_id"`
+	Name       string `json:"name" form:"name" `
+	Visibility int    `json:"visibility" form:"visibility,default=1" `
+	Slug       string `json:"slug" form:"slug" `
+	UserId     uint64 `json:"user_id" form:"user_id"`
 }
 
 func (c FolderUpdateRequestStruct) Validate() error {
@@ -35,5 +36,3 @@ func FolderUpdateRequest(c *gin.Context) (*FolderUpdateRequestStruct, error) {
 	return req, nil
 
 }
-
-
