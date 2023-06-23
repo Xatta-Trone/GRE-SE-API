@@ -417,16 +417,31 @@ func (rep *ListRepository) GenerateUniqueListSlug(title string, id uint64) strin
 	row := rep.Db.QueryRow("SELECT Count(id) FROM lists WHERE slug like ? and id != ?", fmt.Sprintf("%%%s-%%", slug), id)
 	var totalCount int
 	err := row.Scan(&totalCount)
+	timestampedSlug := fmt.Sprintf("%s-%d", slug, time.Now().UnixMilli())
 
 	// fmt.Println(slug, fmt.Sprintf("%s-%%", slug), totalCount)
 
 	if err != nil {
 		// just add the timestamp and return
-		return fmt.Sprintf("%s-%d", slug, time.Now().UnixMilli())
+		return timestampedSlug
 	}
 
 	if totalCount > 0 {
-		return fmt.Sprintf("%s-%d", slug, totalCount+1)
+
+		newSlug := fmt.Sprintf("%s-%d", slug, totalCount+1)
+		// check if this slug exists
+		row := rep.Db.QueryRow("SELECT Count(id) FROM lists WHERE slug like ? and id != ?", fmt.Sprintf("%%%s-%%", newSlug), id)
+		var totalCount int
+		err := row.Scan(&totalCount)
+
+		// fmt.Println(slug, fmt.Sprintf("%s-%%", slug), totalCount)
+
+		if err != sql.ErrNoRows {
+			// we can return the new slug
+			return newSlug
+		}
+
+		return timestampedSlug
 
 	}
 
