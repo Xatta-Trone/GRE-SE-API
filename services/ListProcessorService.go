@@ -405,7 +405,7 @@ func (listService *ListProcessorService) InsertListWordRelation(wordId, listId i
 
 	queryMap := map[string]interface{}{"word_id": wordId, "list_id": listId, "created_at": time.Now().UTC()}
 
-	res, err := listService.db.NamedExec("Insert into list_word_relation(word_id,list_id,created_at) values(:word_id,:list_id,:created_at)", queryMap)
+	res, err := listService.db.NamedExec("Insert ignore into list_word_relation(word_id,list_id,created_at) values(:word_id,:list_id,:created_at)", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)
