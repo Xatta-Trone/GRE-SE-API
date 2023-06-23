@@ -64,9 +64,10 @@ func (rep *ListRepository) Index(r *requests.ListsIndexReqStruct) ([]model.ListM
 		filterQuery = filterSavedSql
 	}
 
-	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.Order         // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	saveOrder := r.SaveOrder // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT * FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON %s order by saved_lists.created_at %s) and name like :query order by %s %s limit :limit offset :offset", filterQuery, order, r.OrderBy, order)
+	query := fmt.Sprintf("SELECT * FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON %s order by saved_lists.created_at %s) and name like :query order by %s %s limit :limit offset :offset", filterQuery, saveOrder, r.OrderBy, order)
 
 	searchStringCount := fmt.Sprintf("FROM lists where id IN (SELECT saved_lists.list_id FROM saved_lists INNER JOIN lists ON %s order by saved_lists.created_at %s) and name like :query", filterQuery, order)
 
@@ -375,9 +376,12 @@ func (rep *ListRepository) FindOneBySlug(slug string) (model.ListModel, error) {
 
 func (rep *ListRepository) Update(id uint64, req *requests.ListsUpdateRequestStruct) (bool, error) {
 
-	slug := rep.GenerateUniqueListSlug(req.Name, id)
+	// check if name changed
+	if req.Slug == "" {
+		req.Slug = rep.GenerateUniqueListSlug(req.Name, id)
+	}
 
-	queryMap := map[string]interface{}{"id": id, "name": req.Name, "slug": slug, "visibility": req.Visibility, "updated_at": time.Now().UTC()}
+	queryMap := map[string]interface{}{"id": id, "name": req.Name, "slug": req.Slug, "visibility": req.Visibility, "updated_at": time.Now().UTC()}
 
 	res, err := rep.Db.NamedExec("Update lists set name=:name,slug=:slug,visibility=:visibility,updated_at=:updated_at where id=:id", queryMap)
 

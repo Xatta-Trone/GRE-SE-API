@@ -400,7 +400,7 @@ func (ctl *ListsController) FindOne(c *gin.Context) {
 	// now attach the user in the list meta
 	user, _ := ctl.userRepo.FindOne(int(list.UserId))
 
-	user2 := model.UserModel{Name: user.Name, UserName: user.UserName,CreatedAt: user.CreatedAt, UpdatedAt:user.UpdatedAt}
+	user2 := model.UserModel{Name: user.Name, UserName: user.UserName, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt}
 
 	list.User = &user2
 
@@ -535,6 +535,7 @@ func (ctl *ListsController) Update(c *gin.Context) {
 	// all good now get the word data
 	// validation request
 	req, errs := requests.ListsUpdateRequest(c)
+	req.UserId = userId
 
 	fmt.Println(req)
 
@@ -543,13 +544,17 @@ func (ctl *ListsController) Update(c *gin.Context) {
 		return
 	}
 
-	if req.Name != list.Name {
-		// update the data
-		ok, err := ctl.repository.Update(list.Id, req)
-		if err != nil || !ok {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-			return
-		}
+	// check if name changed, then update the slug, otherwise keep the original one
+	if req.Name == list.Name {
+		// slug not changed, keep the original one
+		req.Slug = list.Slug
+	}
+
+	// update the data
+	ok, err := ctl.repository.Update(listId, req)
+	if err != nil || !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusNoContent, gin.H{
