@@ -12,11 +12,12 @@ on:
 jobs:
 
   build:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Go
-      uses: actions/setup-go@v3
+    # - name: Set up Go
+    #   uses: actions/setup-go@v3
     #   with:
     #     go-version: 1.20
 
@@ -29,12 +30,13 @@ jobs:
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.HOST }}
-        USERNAME: ${{ secrets.USERNAME }}
-        PORT: ${{ secrets.PORT }}
-        KEY: ${{ secrets.SSHKEY }}
+        username: ${{ secrets.USERNAME }}
+        port: ${{ secrets.PORT }}
+        key: ${{ secrets.SSHKEY }}
         script: |
-          # cd /var/www/word-combinator
-          # sudo git pull origin main
-          # make mgup
-          # go build -o app 
+          cd /var/www/word-combinator
+          sudo git pull origin main
+          make mgup
+          go build -o app 
+          sudo pm2 restart words-combinator
           # sudo systemctl restart word-combinator
