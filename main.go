@@ -49,6 +49,11 @@ func main() {
 	// init services
 	// services.NewWordService(database.Gdb)
 
+	// get release env 
+	if os.Getenv("GIN_MODE") == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	// http
 	gin.ForceConsoleColor()
 	r := gin.Default()
