@@ -1,6 +1,9 @@
 package routes
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/middlewares"
 )
@@ -32,6 +35,17 @@ func Init(r *gin.Engine) {
 		c,_ := ctx.Cookie("test")
 		ctx.JSON(200,gin.H {
 			"message":c,
+		})
+	})
+
+	r.GET("test2",func(ctx *gin.Context) {
+		now := time.Now()
+		tomorrow := time.Now().Add( -time.Hour * 24)
+
+		fmt.Println(now.After(tomorrow))
+
+		ctx.JSON(200,gin.H {
+			"message":"c",
 		})
 	})
 

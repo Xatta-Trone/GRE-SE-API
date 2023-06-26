@@ -29,6 +29,8 @@ type ListRepositoryInterface interface {
 	DeleteWordInList(wordId, listId uint64) (bool, error)
 	ListsByFolderId(req *requests.FolderListIndexReqStruct) ([]model.ListModel, error)
 	GetCount(ids []uint64) ([]model.ListWordModel, error)
+	GetListCount(userId uint64) (int)
+	GetWordsCount(userId uint64) (int)
 	FoldersByListId(listId, userId uint64) ([]model.FolderListRelationModel, error)
 	ToggleFolder(folderId, listId uint64) (bool, error)
 }
@@ -673,5 +675,39 @@ func (rep *ListRepository) ToggleFolder(folderId, listId uint64) (bool, error) {
 
 		return true, nil
 	}
+
+}
+
+func (rep *ListRepository) GetListCount(userId uint64) int {
+
+	// they work with regular types as well
+	var total int
+
+	stmt, _ := rep.Db.Preparex(`SELECT count(list_id) FROM saved_lists where user_id=?`)
+	err := stmt.Get(&total, userId)
+
+	if err != nil {
+		utils.Errorf(err)
+		return 0
+	}
+
+	return total
+
+}
+
+func (rep *ListRepository) GetWordsCount(userId uint64) int {
+
+	// they work with regular types as well
+	var total int
+
+	stmt, _ := rep.Db.Preparex(`SELECT count(word_id) FROM list_word_relation where list_id IN(SELECT list_id FROM saved_lists where user_id=?)`)
+	err := stmt.Get(&total, userId)
+
+	if err != nil {
+		utils.Errorf(err)
+		return 0
+	}
+
+	return total
 
 }

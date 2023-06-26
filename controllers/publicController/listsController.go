@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/enums"
@@ -281,11 +283,16 @@ func (ctl *ListsController) SavedLists(c *gin.Context) {
 }
 
 func (ctl *ListsController) Create(c *gin.Context) {
+	user := model.UserModel{}
 	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
 	}
+
+	// now attach the user in the list meta
+	user, _ = ctl.userRepo.FindOne(int(userId))
+
 	// request validation
 	req, err := requests.ListsCreateRequest(c)
 
@@ -293,6 +300,48 @@ func (ctl *ListsController) Create(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": err})
 		return
 	}
+
+	fmt.Println(req)
+
+	if user.ExpiresOn != nil && time.Now().UTC().After(*user.ExpiresOn) {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "You do not have the premium plan or expired."})
+		return
+	}
+
+	// check free limit
+	if req.Url != "" && user.ExpiresOn == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "You do not have the premium plan or expired."})
+		return
+	}
+
+	if user.ExpiresOn == nil {
+		// check lists count
+		listLimitString := os.Getenv("FREE_LISTS")
+		listLimit, _ := strconv.Atoi(listLimitString)
+		wordLimitString := os.Getenv("FREE_WORDS")
+		wordLimit, _ := strconv.Atoi(wordLimitString)
+		listsCount := ctl.repository.GetListCount(userId)
+
+		if listsCount >= listLimit {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "Free limit exceeded."})
+			return
+		}
+
+		// check word limit
+		wordsCount := ctl.repository.GetWordsCount(userId)
+		// get words count for the current req
+		words := ctl.listService.GetWordsFromListMetaRecord(req.Words)
+
+		// remaining words
+		remainingWords := wordLimit - wordsCount - len(words)
+
+		if remainingWords <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "Free limit exceeded."})
+			return
+		}
+	}
+
+	fmt.Println(user)
 
 	// set the user id
 	req.UserId = userId
@@ -315,11 +364,35 @@ func (ctl *ListsController) Create(c *gin.Context) {
 }
 
 func (ctl *ListsController) SaveListItem(c *gin.Context) {
+	user := model.UserModel{}
 	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
 	}
+	// now attach the user in the list meta
+	user, _ = ctl.userRepo.FindOne(int(userId))
+
+
+	// check user limit 
+	if user.ExpiresOn == nil {
+		// check lists count
+		listLimitString := os.Getenv("FREE_LISTS")
+		listLimit, _ := strconv.Atoi(listLimitString)
+		listsCount := ctl.repository.GetListCount(userId)
+
+		if listsCount >= listLimit {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "Free limit exceeded."})
+			return
+		}
+	}
+
+	if time.Now().UTC().After(*user.ExpiresOn) == false {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "You do not have the premium plan or expired."})
+		return
+	}
+
+
 	// request validation
 	req, err := requests.SavedListsCreateRequest(c)
 

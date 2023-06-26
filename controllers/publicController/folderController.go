@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-combinator/enums"
@@ -248,6 +251,7 @@ func (ctl *FolderController) SavedFolders(c *gin.Context) {
 }
 
 func (ctl *FolderController) Create(c *gin.Context) {
+	user := model.UserModel{}
 	userId, err := utils.GetUserId(c)
 
 	if err != nil {
@@ -255,6 +259,27 @@ func (ctl *FolderController) Create(c *gin.Context) {
 	}
 
 	fmt.Println(userId)
+	// now attach the user in the list meta
+	user, _ = ctl.userRepo.FindOne(int(userId))
+
+
+	
+	// check folder limit
+	if user.ExpiresOn == nil {
+		// permissible folder count
+		folderLimitString := os.Getenv("FREE_FOLDERS")
+		folderLimit, _ := strconv.Atoi(folderLimitString)
+		// count folders
+		folderCount := ctl.repository.GetFoldersCount(userId)
+
+		fmt.Println(folderCount,folderLimit)
+
+		if folderCount >= folderLimit {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "Free limit exceeded."})
+			return
+		}
+
+	}
 
 	// request validation
 	req, err := requests.FolderCreateRequest(c)
@@ -266,6 +291,7 @@ func (ctl *FolderController) Create(c *gin.Context) {
 
 	// set the user id
 	req.UserId = userId
+
 
 	// now create the record
 	folder, err := ctl.repository.Create(req)
@@ -282,11 +308,36 @@ func (ctl *FolderController) Create(c *gin.Context) {
 }
 
 func (ctl *FolderController) SaveFolder(c *gin.Context) {
+	user := model.UserModel{}
 	userId, err := utils.GetUserId(c)
 
 	if err != nil {
 		return
 	}
+	// now attach the user in the list meta
+	user, _ = ctl.userRepo.FindOne(int(userId))
+
+
+	// check user limit 
+	if user.ExpiresOn == nil {
+		// check lists count
+		folderLimitString := os.Getenv("FREE_FOLDERS")
+		folderLimit, _ := strconv.Atoi(folderLimitString)
+		foldersCount := ctl.repository.GetFoldersCount(userId)
+
+		if foldersCount >= folderLimit {
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "Free limit exceeded."})
+			return
+		}
+	}
+
+	if time.Now().UTC().After(*user.ExpiresOn) == false {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "You do not have the premium plan or expired."})
+		return
+	}
+
+
+
 
 	folderId, err := utils.ParseParamToUint64(c, "folder_id")
 

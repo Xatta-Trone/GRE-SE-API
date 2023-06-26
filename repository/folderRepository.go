@@ -28,6 +28,7 @@ type FolderRepositoryInterface interface {
 	DeleteSavedFolder(userId, folderId uint64) (bool, error)
 	ToggleList(folderId, listId uint64) (bool, error)
 	GetCount(ids []uint64) ([]model.FolderListRelationModel, error)
+	GetFoldersCount(userId uint64) (int)
 	ListIdsByFolderId(folderId, userId uint64) ([]model.FolderListRelationModel, error)
 }
 type FolderRepository struct {
@@ -533,6 +534,23 @@ func (rep *FolderRepository) GetCount(ids []uint64) ([]model.FolderListRelationM
 	}
 
 	return models, nil
+
+}
+
+func (rep *FolderRepository) GetFoldersCount(userId uint64) int {
+
+	// they work with regular types as well
+	var total int
+
+	stmt, _ := rep.Db.Preparex(`SELECT count(folder_id) FROM saved_folders where user_id=?`)
+	err := stmt.Get(&total, userId)
+
+	if err != nil {
+		utils.Errorf(err)
+		return 0
+	}
+
+	return total
 
 }
 
