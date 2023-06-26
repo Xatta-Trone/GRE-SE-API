@@ -331,7 +331,7 @@ func (ctl *FolderController) SaveFolder(c *gin.Context) {
 		}
 	}
 
-	if time.Now().UTC().After(*user.ExpiresOn) == false {
+	if !time.Now().UTC().After(*user.ExpiresOn) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": "You do not have the premium plan or expired."})
 		return
 	}
