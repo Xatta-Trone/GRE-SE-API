@@ -4,3 +4,4 @@ uploads/*.csv
 app
 db-data/mysql
 *.exe
+pm2.json

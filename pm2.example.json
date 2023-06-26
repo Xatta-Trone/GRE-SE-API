@@ -1,0 +1,8 @@
+{
+  "apps": [
+    {
+      "name": "words-combinator",
+      "script": "./words-combinator.exe"
+    }
+  ]
+}
