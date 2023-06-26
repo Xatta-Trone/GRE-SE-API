@@ -17,6 +17,7 @@ type ListsCreateRequestStruct struct {
 	Words      string `json:"words" form:"words" `
 	Visibility int    `json:"visibility" form:"visibility,default=1" `
 	UserId     uint64 `json:"user_id" form:"user_id"`
+	FolderId   uint64 `json:"folder_id" form:"folder_id"`
 	Scope      string `json:"scope" form:"scope,default=user"` // either admin or user; userId required when scope is admin
 }
 

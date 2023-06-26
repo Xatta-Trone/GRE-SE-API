@@ -19,6 +19,73 @@ func ScrapQuizlet(url string) ([]string, string, error) {
 	var fileName string
 	var err error = nil
 
+		geziyor.NewGeziyor(&geziyor.Options{
+		StartRequestsFunc: func(g *geziyor.Geziyor) {
+			g.GetRendered(url, g.Opt.ParseFunc)
+		},
+		ParseFunc: func(g *geziyor.Geziyor, r *client.Response) {
+			// fmt.Println(string(r.Body))
+
+			if r.StatusCode != http.StatusOK {
+				fmt.Println("There was an error, ", r.Status)
+				err = fmt.Errorf("%s", r.Status)
+			}
+
+			root := r.HTMLDoc.Find(".SetPage-setContentWrapper")
+			
+			if root.Length() == 1 {
+				// it will go through each group
+				rootSet := root.Find(".SetPageTerms-termsWrapper")
+				sets := rootSet.Find(".SetPageTerms-term")
+				length := sets.Length()
+
+				fmt.Println(length)
+
+				if length > 0 {
+					sets.Each(func(i int, s *goquery.Selection) {
+						word := s.Children().Find(".SetPageTerm-wordText").Text()
+						words = append(words, word)
+					})
+				}
+
+				// hidden sets
+				hidden := root.Find("div[style=\"display:none\"]").Children()
+
+				fmt.Println("hidden set", hidden.Length())
+
+				hidden.Each(func(i int, s *goquery.Selection) {
+					// set the word // word is in every even number element
+					str := strings.TrimSpace(strings.ReplaceAll(s.Text(), "\n", " "))
+					if i == 0 || i%2 == 0 {
+						words = append(words, str)
+					}
+
+				})
+
+				// find the title
+				titleText := root.Find("div.SetPage-titleWrapper").Text()
+				title := strings.TrimSpace(titleText)
+				// title = strings.ReplaceAll(title, " ", "-")
+				title = strings.ReplaceAll(title, ":", "")
+				if len(title) > 0 {
+					fileName = title
+				}
+
+			}
+
+		},
+	}).Start()
+
+
+	return words, fileName, err
+}
+
+
+func ScrapQuizlet2(url string) ([]string, string, error) {
+	var words []string
+	var fileName string
+	var err error = nil
+
 	c := colly.NewCollector(
 		colly.AllowedDomains("quizlet.com", "www.quizlet.com"),
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/110.0"),

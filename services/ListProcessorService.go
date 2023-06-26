@@ -27,6 +27,9 @@ func NewListProcessorService(db *sqlx.DB) *ListProcessorService {
 
 type ListProcessorServiceInterface interface {
 	ProcessListMetaRecord(listMeta model.ListMetaModel)
+	InsertListWordRelation(wordId, listId int64) (error)
+	ProcessWordsOfSingleGroup(words []string, listId int64)
+	GetWordsFromListMetaRecord(words string) ([]string)
 }
 
 func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.ListMetaModel) {
@@ -49,7 +52,7 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 	if listMeta.Words != nil {
 		// fire words processor
 		fmt.Println(*listMeta.Words)
-		processedWordStruct := GetWordsFromListMetaRecord(*listMeta.Words)
+		processedWordStruct := listService.GetWordsFromListMetaRecord(*listMeta.Words)
 		words = append(words, processedWordStruct...)
 	}
 
@@ -71,6 +74,9 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 
 	// now follow the steps
 	listService.ProcessWordsOfSingleGroup(words, listId)
+
+	// now add to saved lists
+	listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
 
@@ -117,6 +123,9 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 		return
 	}
 
+	// now create a saved folder record
+	listService.AddToSavedFolders(uint64(folderId), listMeta.UserId)
+
 	for i, url := range memriseSet.Urls {
 		words, err := scrapper.ScrapMemrise(url)
 
@@ -147,6 +156,8 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 
 		// now follow the steps
 		listService.ProcessWordsOfSingleGroup(words, listId)
+		// now add to saved lists
+		listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 	}
 
@@ -176,6 +187,9 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 			return
 		}
 
+		// now create a saved folder record
+		listService.AddToSavedFolders(uint64(folderId), listMeta.UserId)
+
 		for _, set := range urls {
 			words, title, err := scrapper.ScrapQuizlet(set.Url)
 
@@ -203,6 +217,8 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 
 			// now follow the steps
 			listService.ProcessWordsOfSingleGroup(words, listId)
+			// now add to saved lists
+			listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 		}
 
@@ -234,6 +250,9 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 
 		// now follow the steps
 		listService.ProcessWordsOfSingleGroup(words, listId)
+
+		// now add to saved lists
+		listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 	}
 
@@ -270,6 +289,9 @@ func (listService *ListProcessorService) ProcessVocabularyWords(listMeta model.L
 	// now follow the steps
 	listService.ProcessWordsOfSingleGroup(words, listId)
 
+	// add to saved list
+	listService.AddToSavedList(uint64(listId), listMeta.UserId)
+	// update the list meta status
 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
 	utils.PrintG("Processing complete")
 
@@ -383,14 +405,14 @@ func (listService *ListProcessorService) InsertListWordRelation(wordId, listId i
 
 	queryMap := map[string]interface{}{"word_id": wordId, "list_id": listId, "created_at": time.Now().UTC()}
 
-	res, err := listService.db.NamedExec("Insert into list_word_relation(word_id,list_id,created_at) values(:word_id,:list_id,:created_at)", queryMap)
+	res, err := listService.db.NamedExec("Insert ignore into list_word_relation(word_id,list_id,created_at) values(:word_id,:list_id,:created_at)", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)
 		return err
 	}
 
-	lastId, err := res.LastInsertId()
+	lastId, err := res.RowsAffected()
 
 	if err != nil {
 		utils.Errorf(err)
@@ -398,7 +420,7 @@ func (listService *ListProcessorService) InsertListWordRelation(wordId, listId i
 	}
 
 	if lastId == 0 {
-		return fmt.Errorf("there was a problem with the insertion. last id: %d", lastId)
+		return fmt.Errorf("there was a problem with the insertion. rows affected: %d", lastId)
 	}
 
 	return nil
@@ -432,7 +454,7 @@ func UpdateListMetaRecordStatus(db *sqlx.DB, id uint64, status int) {
 
 }
 
-func GetWordsFromListMetaRecord(words string) []string {
+func (listService *ListProcessorService) GetWordsFromListMetaRecord(words string) []string {
 	var processedWords []string
 
 	// trim white spaces, then split by new line
@@ -492,6 +514,10 @@ func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta m
 	var folderIdToInsert uint64
 	var ListIdToInsert uint64
 
+	if listMeta.FolderId != nil {
+		folderIdToInsert = *listMeta.FolderId
+	}
+
 	if folderId != 0 {
 		folderIdToInsert = folderId
 	}
@@ -521,15 +547,15 @@ func (listService *ListProcessorService) CreateListRecordFromListMeta(listMeta m
 
 	if folderIdToInsert != 0 {
 		// create the folder list relation
-		queryMapForListFolderRelation := map[string]interface{}{"list_id": lastId, "folder_id": folderIdToInsert, "user_id": listMeta.UserId}
-		_, err = listService.db.NamedExec("Insert into folder_list_relation(folder_id,list_id) values(:folder_id,:list_id)", queryMapForListFolderRelation)
+		queryMapForListFolderRelation := map[string]interface{}{"list_id": lastId, "folder_id": folderIdToInsert, "user_id": listMeta.UserId, "created_at": time.Now().UTC()}
+		_, err = listService.db.NamedExec("Insert ignore into folder_list_relation(folder_id,list_id) values(:folder_id,:list_id)", queryMapForListFolderRelation)
 		if err != nil {
 			utils.Errorf(err)
 			utils.PrintR("there was an error creating list folder relation \n")
 
 		}
 		// insert into saved lists
-		_, err = listService.db.NamedExec("Insert into saved_lists(user_id,list_id) values(:user_id,:list_id)", queryMapForListFolderRelation)
+		_, err = listService.db.NamedExec("Insert ignore into saved_lists(user_id,list_id,created_at) values(:user_id,:list_id,:created_at)", queryMapForListFolderRelation)
 		if err != nil {
 			utils.Errorf(err)
 			utils.PrintR("there was an error creating list folder relation \n")
@@ -580,9 +606,9 @@ func (listService *ListProcessorService) CreateFolderFromListMeta(listMeta model
 
 	if lastId != 0 {
 		// create the folder list relation
-		queryMapForListFolderRelation := map[string]interface{}{"folder_id": lastId, "user_id": listMeta.UserId}
+		queryMapForListFolderRelation := map[string]interface{}{"folder_id": lastId, "user_id": listMeta.UserId, "created_at": time.Now().UTC()}
 		// insert into saved folders
-		_, err = listService.db.NamedExec("Insert into saved_folders(user_id,folder_id) values(:user_id,:folder_id)", queryMapForListFolderRelation)
+		_, err = listService.db.NamedExec("Insert into saved_folders(user_id,folder_id,created_at) values(:user_id,:folder_id,:created_at)", queryMapForListFolderRelation)
 		if err != nil {
 			utils.Errorf(err)
 			utils.PrintR("there was an error creating list folder relation \n")
@@ -617,4 +643,26 @@ func (listService *ListProcessorService) GenerateUniqueFolderSlug(title string) 
 	}
 
 	return fmt.Sprintf("%s-%d", slug, 0)
+}
+
+func (listService *ListProcessorService) AddToSavedList(listId, userId uint64) {
+
+	queryMap := map[string]interface{}{"user_id": userId, "list_id": listId, "created_at": time.Now().UTC()}
+
+	_, err := listService.db.NamedExec("Insert ignore into saved_lists(user_id,list_id,created_at) values(:user_id,:list_id,:created_at)", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+	}
+}
+
+func (listService *ListProcessorService) AddToSavedFolders(folderId, userId uint64) {
+
+	queryMap := map[string]interface{}{"user_id": userId, "folder_id": folderId, "created_at": time.Now().UTC()}
+
+	_, err := listService.db.NamedExec("Insert ignore into saved_folders(user_id,folder_id,created_at) values(:user_id,:folder_id,:created_at)", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+	}
 }

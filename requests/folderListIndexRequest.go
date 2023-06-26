@@ -9,6 +9,7 @@ type FolderListIndexReqStruct struct {
 	ID       int    `form:"id,default=0" json:"id"`
 	Query    string `form:"query" json:"query"`
 	OrderBy  string `form:"order_by,default=desc" json:"order_by" `
+	Order    string `form:"order,default=id" json:"order" `
 	Page     int    `form:"page,default=1" json:"page"`
 	PerPage  int    `form:"per_page,default=20" json:"per_page"`
 	Total    int    `json:"total"`
@@ -18,7 +19,7 @@ type FolderListIndexReqStruct struct {
 
 func (c FolderListIndexReqStruct) Validate() error {
 	return validation.ValidateStruct(&c,
-		// validation.Field(&c.ID, validation.Required),
+		validation.Field(&c.Order, validation.Required),
 		validation.Field(&c.OrderBy, validation.Required, validation.In("desc", "asc")),
 		validation.Field(&c.Page, validation.Required),
 		validation.Field(&c.PerPage, validation.Required),

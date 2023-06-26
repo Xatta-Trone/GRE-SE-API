@@ -8,6 +8,7 @@ import (
 
 type ListsUpdateRequestStruct struct {
 	Name       string `json:"name" form:"name" `
+	Slug       string `json:"slug" form:"slug" `
 	Visibility int    `json:"visibility" form:"visibility,default=1" `
 	UserId     uint64 `json:"user_id" form:"user_id"`
 }

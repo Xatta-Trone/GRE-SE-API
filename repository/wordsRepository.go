@@ -15,6 +15,7 @@ import (
 type WordRepositoryInterface interface {
 	FindAll(req *requests.WordIndexReqStruct) ([]model.WordModel, error)
 	FindAllByListId(req *requests.WordIndexByListIdReqStruct) ([]model.WordModel, error)
+	FindWordsById(wordIds []string, req *requests.WordIndexByListIdReqStruct) ([]model.WordModel, error)
 	Create(word string, wordData model.WordDataModel, isReviewed int) (model.WordModel, error)
 	FindOne(id int) (model.WordModel, error)
 	DeleteOne(id int) (bool, error)
@@ -42,7 +43,7 @@ func (rep *WordRepository) FindAll(r *requests.WordIndexReqStruct) ([]model.Word
 	searchString := "FROM words where word like :word and id > :id"
 
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT id,word,is_reviewed,created_at,updated_at %s order by id %s limit :limit offset :offset",searchString, order)
+	query := fmt.Sprintf("SELECT id,word,is_reviewed,created_at,updated_at %s order by id %s limit :limit offset :offset", searchString, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -212,12 +213,12 @@ func (rep *WordRepository) FindAllByListId(r *requests.WordIndexByListIdReqStruc
 
 	words := []model.WordModel{}
 
-	queryMap := map[string]interface{}{"word": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "list_id": r.ListId}
+	queryMap := map[string]interface{}{"word": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "order": r.Order, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "list_id": r.ListId}
 
 	order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
 
 	// I am using named execution to make it more clear
-	query := fmt.Sprintf("SELECT id,word,word_data,is_reviewed,created_at,updated_at FROM words where id IN (SELECT word_id FROM list_word_relation WHERE list_id = :list_id) order by id %s limit :limit offset :offset", order)
+	query := fmt.Sprintf("SELECT id,word,word_data,is_reviewed,created_at,updated_at FROM words where id IN (SELECT word_id FROM list_word_relation WHERE list_id = :list_id) order by %s %s limit :limit offset :offset", r.Order, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -232,6 +233,34 @@ func (rep *WordRepository) FindAllByListId(r *requests.WordIndexByListIdReqStruc
 	if err != nil {
 		utils.Errorf(err)
 		return words, err
+	}
+
+	return words, nil
+
+}
+
+func (rep *WordRepository) FindWordsById(wordIds []string, r *requests.WordIndexByListIdReqStruct) ([]model.WordModel, error) {
+
+	words := []model.WordModel{}
+
+	// queryMap := map[string]interface{}{"word": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "list_id": r.ListId}
+
+	// order := r.OrderBy // problem with order by https://github.com/jmoiron/sqlx/issues/153
+
+	query, args, err := sqlx.In("SELECT * FROM words where id in (?)", wordIds)
+
+	if err != nil {
+		utils.Errorf(err)
+		return nil, err
+	}
+
+	query = rep.Db.Rebind(query)
+
+	err = rep.Db.Select(&words, query, args...)
+
+	if err != nil {
+		utils.Errorf(err)
+		return nil, err
 	}
 
 	return words, nil

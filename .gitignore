@@ -2,3 +2,6 @@ tmp
 uploads/*.csv
 .env
 app
+db-data/mysql
+*.exe
+pm2.json
