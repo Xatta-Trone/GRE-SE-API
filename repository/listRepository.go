@@ -19,7 +19,7 @@ type ListRepositoryInterface interface {
 	Index(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
 	PublicIndex(req *requests.PublicListsIndexReqStruct) ([]model.ListModel, error)
 	SavedLists(req *requests.SavedListsIndexReqStruct) ([]model.ListModel, error)
-	AdminIndex(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
+	AdminIndex(req *requests.AdminListsIndexReqStruct) ([]model.ListModel, error)
 	Update(id uint64, req *requests.ListsUpdateRequestStruct) (bool, error)
 	FindOneBySlug(slug string) (model.ListModel, error)
 	FindOne(id uint64) (model.ListModel, error)
@@ -170,14 +170,14 @@ func (rep *ListRepository) SavedLists(r *requests.SavedListsIndexReqStruct) ([]m
 
 }
 
-func (rep *ListRepository) AdminIndex(r *requests.ListsIndexReqStruct) ([]model.ListModel, error) {
+func (rep *ListRepository) AdminIndex(r *requests.AdminListsIndexReqStruct) ([]model.ListModel, error) {
 
 	models := []model.ListModel{}
 	count := model.CountModel{}
 
 	queryMap := map[string]interface{}{"query": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage, "user_id": r.UserId}
 
-	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
 
 	searchString := "FROM lists INNER JOIN users on lists.user_id = users.id where lists.name like :query or users.name like :query or users.email like :query or users.username like :query"
 	// I am using named execution to make it more clear

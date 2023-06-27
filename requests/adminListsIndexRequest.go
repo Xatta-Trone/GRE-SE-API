@@ -5,18 +5,20 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
-type CouponIndexRequestStruct struct {
-	ID       int    `form:"id,default=0" json:"id"`
-	Query    string `form:"query" json:"query"`
+type AdminListsIndexReqStruct struct {
+	ID        int    `form:"id,default=0" json:"id"`
+	Query     string `form:"query" json:"query"`
 	OrderBy  string `form:"order_by,default=id" json:"order_by" `
 	Order    string `form:"order,default=0" json:"order" `
 	OrderDir string `form:"order_dir,default=desc" json:"order_dir" `
-	Page     int    `form:"page,default=1" json:"page"`
-	PerPage  int    `form:"per_page,default=20" json:"per_page"`
-	Count    int64  `form:"count" json:"count"`
+	Page      int    `form:"page,default=1" json:"page"`
+	PerPage   int    `form:"per_page,default=20" json:"per_page"`
+	UserId    uint64 `json:"user_id"`
+	Count     int64  `form:"count" json:"count"`
+	Filter    string `form:"filter,default=all" json:"filter"`
 }
 
-func (c CouponIndexRequestStruct) Validate() error {
+func (c AdminListsIndexReqStruct) Validate() error {
 	return validation.ValidateStruct(&c,
 		// validation.Field(&c.ID, validation.Required),
 		validation.Field(&c.OrderBy, validation.Required),
@@ -26,8 +28,8 @@ func (c CouponIndexRequestStruct) Validate() error {
 	)
 }
 
-func CouponIndexRequest(c *gin.Context) (*CouponIndexRequestStruct, error) {
-	var req CouponIndexRequestStruct
+func AdminListsIndexRequest(c *gin.Context) (*AdminListsIndexReqStruct, error) {
+	var req AdminListsIndexReqStruct
 	err := c.ShouldBind(&req)
 	if err != nil {
 		return &req, err

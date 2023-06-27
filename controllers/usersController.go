@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -177,6 +178,8 @@ func (ctl *UsersController) Update(c *gin.Context) {
 
 	// validation request
 	req, errs := requests.UsersUpdateRequest(c)
+
+	fmt.Println(req)
 
 	if errs != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})

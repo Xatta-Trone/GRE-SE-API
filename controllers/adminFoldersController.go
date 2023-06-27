@@ -28,7 +28,7 @@ func NewAdminFolderController(repository repository.FolderRepositoryInterface, l
 
 func (ctl *AdminFolderController) Index(c *gin.Context) {
 
-	req, errs := requests.FolderIndexRequest(c)
+	req, errs := requests.AdminFolderIndexRequest(c)
 
 	if errs != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs})

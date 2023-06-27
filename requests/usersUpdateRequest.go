@@ -7,9 +7,10 @@ import (
 )
 
 type UsersUpdateRequestStruct struct {
-	Name     string `json:"name" form:"name" `
-	Email    string `json:"email" form:"email" `
-	UserName string `json:"username" form:"username" `
+	Name      string `json:"name" form:"name" `
+	Email     string `json:"email" form:"email" `
+	UserName  string `json:"username" form:"username" `
+	ExpiresOn string `json:"expires_on" form:"expires_on" `
 }
 
 func (c UsersUpdateRequestStruct) Validate() error {

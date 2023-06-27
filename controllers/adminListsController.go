@@ -35,7 +35,7 @@ func (ctl *AdminListsController) Index(c *gin.Context) {
 	fmt.Println("param", c.Param("scope"), c.Query("scope"))
 
 	// validation request
-	req, errs := requests.ListsIndexRequest(c)
+	req, errs := requests.AdminListsIndexRequest(c)
 
 	// fmt.Println(req)
 

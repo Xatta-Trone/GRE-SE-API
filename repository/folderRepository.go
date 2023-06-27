@@ -19,7 +19,7 @@ type FolderRepositoryInterface interface {
 	Index(req *requests.FolderIndexReqStruct) ([]model.FolderModel, error)
 	PublicIndex(req *requests.PublicFolderIndexReqStruct) ([]model.FolderModel, error)
 	SavedFolders(req *requests.SavedFolderIndexReqStruct) ([]model.FolderModel, error)
-	AdminIndex(req *requests.FolderIndexReqStruct) ([]model.FolderModel, model.CountModel, error)
+	AdminIndex(req *requests.AdminFolderIndexReqStruct) ([]model.FolderModel, model.CountModel, error)
 	Create(req *requests.FolderCreateRequestStruct) (model.FolderModel, error)
 	SaveFolder(userId, folderId uint64) (bool, error)
 	FindOne(id uint64) (model.FolderModel, error)
@@ -167,7 +167,7 @@ func (rep *FolderRepository) SavedFolders(r *requests.SavedFolderIndexReqStruct)
 
 }
 
-func (rep *FolderRepository) AdminIndex(r *requests.FolderIndexReqStruct) ([]model.FolderModel, model.CountModel, error) {
+func (rep *FolderRepository) AdminIndex(r *requests.AdminFolderIndexReqStruct) ([]model.FolderModel, model.CountModel, error) {
 
 	models := []model.FolderModel{}
 	count := model.CountModel{}
@@ -176,7 +176,7 @@ func (rep *FolderRepository) AdminIndex(r *requests.FolderIndexReqStruct) ([]mod
 
 	fmt.Println(r.UserId)
 
-	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
 	searchString := "FROM folders INNER JOIN users on folders.user_id = users.id where folders.name like :query or users.name like :query or users.email like :query or users.username like :query"
 

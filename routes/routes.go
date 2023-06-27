@@ -40,7 +40,7 @@ func Init(r *gin.Engine) {
 
 	r.GET("test2",func(ctx *gin.Context) {
 		now := time.Now()
-		tomorrow := time.Now().Add( -time.Hour * 24)
+		tomorrow := time.Now().Add(time.Hour * 24)
 
 		fmt.Println(now.After(tomorrow))
 

@@ -64,8 +64,9 @@ func (ctl *AdminCouponController) Create(c *gin.Context) {
 
 	// check if coupon exists
 	_, errs = ctl.repository.Create(req, req.Coupon)
+
 	if errs != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"errors": errs.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"errors": errs.Error()})
 		return
 	}
 

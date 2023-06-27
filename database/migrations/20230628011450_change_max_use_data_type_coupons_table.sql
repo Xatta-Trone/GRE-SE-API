@@ -2,15 +2,10 @@
 -- +goose StatementBegin
 ALTER TABLE
     coupons
-ADD
-    `months` INT DEFAULT 0
-after
-    `coupon`;
+MODIFY
+    COLUMN `max_use` INT DEFAULT 0;
 
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
-ALTER TABLE
-`coupons` DROP `months`;
-
 -- +goose StatementEnd

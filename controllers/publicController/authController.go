@@ -111,7 +111,7 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	if cookieDomain == "" {
 		cookieDomain = "localhost"
 	} else {
-		cookieDomain = fmt.Sprintf(".%s",cookieDomain)
+		cookieDomain = fmt.Sprintf(".%s", cookieDomain)
 	}
 
 	c.SetCookie("grese_token", token, ttlValue, "/", cookieDomain, false, true)
@@ -260,7 +260,7 @@ func (ctl *AuthController) Upgrade(c *gin.Context) {
 	if user.ExpiresOn != nil {
 		fmt.Println(today.After(*user.ExpiresOn))
 		if today.Before(*user.ExpiresOn) {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": "you already have a ongoing subscription" })
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "you already have a ongoing subscription"})
 			return
 		}
 	}
@@ -281,10 +281,17 @@ func (ctl *AuthController) Upgrade(c *gin.Context) {
 		return
 	}
 
-	if couponData.UserId != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "coupon already used" })
+	if couponData.Type == "one_time" && couponData.UserId != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "coupon already used"})
 		return
 	}
+
+	// check coupon max use
+	if couponData.Type == "multiple" && (couponData.MaxUse-couponData.Used) <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "coupon already used to maximum limit"})
+		return
+	}
+
 	expires := time.Now().UTC().AddDate(0, couponData.Months, 0)
 	ok, err := ctl.userRepo.UpdateExpiresOn(expires, user.ID)
 
@@ -299,7 +306,8 @@ func (ctl *AuthController) Upgrade(c *gin.Context) {
 		return
 	}
 
-	ctl.couponRepo.UpdateUserId(couponData.ID, user.ID)
+	// ctl.couponRepo.UpdateUserId(couponData.ID, user.ID)
+	ctl.couponRepo.UpdateCouponStatus(couponData, user.ID)
 
 	user, _ = ctl.userRepo.FindOneByEmail(email)
 
@@ -343,7 +351,7 @@ func (ctl *AuthController) PurchaseSuccess(c *gin.Context) {
 	if user.ExpiresOn != nil {
 		fmt.Println(today.After(*user.ExpiresOn))
 		if today.Before(*user.ExpiresOn) {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": "you already have a ongoing subscription" })
+			c.JSON(http.StatusBadRequest, gin.H{"errors": "you already have a ongoing subscription"})
 			return
 		}
 	}

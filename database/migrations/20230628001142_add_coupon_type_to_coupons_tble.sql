@@ -3,7 +3,7 @@
 ALTER TABLE
     coupons
 ADD
-    `months` INT DEFAULT 0
+    `type` varchar(255) not null DEFAULT "one_time"
 after
     `coupon`;
 
@@ -11,6 +11,6 @@ after
 -- +goose Down
 -- +goose StatementBegin
 ALTER TABLE
-`coupons` DROP `months`;
+    `coupons` DROP `type`;
 
 -- +goose StatementEnd

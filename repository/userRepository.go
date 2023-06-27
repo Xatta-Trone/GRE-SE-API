@@ -43,9 +43,9 @@ func (rep *UserRepository) Index(r requests.UsersIndexReqStruct) ([]model.UserMo
 	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
 	// I am using named execution to make it more clear
 
-	searchString := "FROM users where name like :query or email like :query or username like :query  and id > :id"
+	searchString := "FROM users where name like :query or email like :query or username like :query or id like :query  and id > :id"
 
-	query := fmt.Sprintf("SELECT id,name,email,username,created_at,updated_at %s order by %s %s limit :limit offset :offset", searchString, r.OrderBy, order)
+	query := fmt.Sprintf("SELECT id,name,email,username,created_at,updated_at,expires_on %s order by %s %s limit :limit offset :offset", searchString, r.OrderBy, order)
 
 	nstmt, err := rep.Db.PrepareNamed(query)
 
@@ -252,8 +252,18 @@ func (rep *UserRepository) Create(req *requests.UsersCreateRequestStruct) (model
 }
 
 func (rep *UserRepository) Update(id int, req *requests.UsersUpdateRequestStruct) (bool, error) {
+	var expires time.Time
 
-	queryMap := map[string]interface{}{"id": id, "name": req.Name, "email": req.Email, "username": req.UserName, "updated_at": time.Now().UTC()}
+	fmt.Println("time time")
+	fmt.Println(expires)
+
+	if req.ExpiresOn != "" {
+		expires, _ = time.Parse("2006-01-02", req.ExpiresOn)
+	}
+
+	fmt.Println(expires)
+
+	queryMap := map[string]interface{}{"id": id, "name": req.Name, "email": req.Email,"expires_on": expires, "username": req.UserName, "updated_at": time.Now().UTC()}
 
 	res, err := rep.Db.NamedExec("Update users set name=:name,email=:email,username=:username,updated_at=:updated_at where id=:id", queryMap)
 
@@ -310,7 +320,6 @@ func (rep *UserRepository) UpdateUserName(id uint64, username string) (bool, err
 	return true, nil
 
 }
-
 
 func (rep *UserRepository) UpdateExpiresOn(expires_on time.Time, id uint64) (bool, error) {
 

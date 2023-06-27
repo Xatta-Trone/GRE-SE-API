@@ -17,6 +17,7 @@ type CouponInterface interface {
 	FindByCoupon(coupon string) (model.CouponModel, error)
 	Delete(id int) (bool, error)
 	UpdateUserId(id, userId uint64) (bool, error)
+	UpdateCouponStatus(coupon model.CouponModel, userId uint64) (bool, error)
 }
 
 type CouponRepository struct {
@@ -34,9 +35,9 @@ func (rep *CouponRepository) Index(r *requests.CouponIndexRequestStruct) ([]mode
 
 	queryMap := map[string]interface{}{"coupon": "%" + r.Query + "%", "id": r.ID, "orderby": r.OrderBy, "limit": r.PerPage, "offset": (r.Page - 1) * r.PerPage}
 
-	order := r.Order // problem with order by https://github.com/jmoiron/sqlx/issues/153
+	order := r.OrderDir // problem with order by https://github.com/jmoiron/sqlx/issues/153
 
-	searchString := "FROM coupons where coupon like :coupon and id > :id"
+	searchString := "FROM coupons where coupon like :coupon"
 
 	// I am using named execution to make it more clear
 	query := fmt.Sprintf("SELECT * %s order by id %s limit :limit offset :offset", searchString, order)
@@ -65,16 +66,21 @@ func (rep *CouponRepository) Index(r *requests.CouponIndexRequestStruct) ([]mode
 
 }
 
-func (rep *CouponRepository) Create(req requests.CouponCreateRequestStruct,coupon string) (int64, error) {
+func (rep *CouponRepository) Create(req requests.CouponCreateRequestStruct, coupon string) (int64, error) {
+	couponType := req.Type
 
-	queryMap := map[string]interface{}{"coupon": coupon, "max_use": req.MaxUse, "expires": "", "months": req.Months}
+	if req.MaxUse > 1 {
+		couponType = "multiple"
+	}
+
+	queryMap := map[string]interface{}{"coupon": coupon, "max_use": req.MaxUse, "type": couponType, "expires": "", "months": req.Months}
 
 	if req.Expires != "" {
-		expires,_ := time.Parse("2006-01-02", req.Expires)
+		expires, _ := time.Parse("2006-01-02", req.Expires)
 		queryMap["expires"] = expires
 	}
 
-	res, err := rep.Db.NamedExec("Insert into coupons(coupon,max_use,expires,months) values(:coupon,nullif(:max_use,0),nullif(:expires,\"\"), :months)", queryMap)
+	res, err := rep.Db.NamedExec("Insert into coupons(coupon,max_use,expires,months,type) values(:coupon,:max_use,nullif(:expires,\"\"), :months,:type)", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)
@@ -144,7 +150,7 @@ func (rep *CouponRepository) FindByCoupon(coupon string) (model.CouponModel, err
 
 func (rep *CouponRepository) Delete(id int) (bool, error) {
 
-	queryMap := map[string]interface{}{"id": id,}
+	queryMap := map[string]interface{}{"id": id}
 
 	res, err := rep.Db.NamedExec("DELETE FROM `coupons` WHERE id=:id", queryMap)
 
@@ -166,9 +172,39 @@ func (rep *CouponRepository) Delete(id int) (bool, error) {
 
 func (rep *CouponRepository) UpdateUserId(id, userId uint64) (bool, error) {
 
-	queryMap := map[string]interface{}{"id": id,"user_id": userId}
+	queryMap := map[string]interface{}{"id": id, "user_id": userId}
 
 	res, err := rep.Db.NamedExec("Update `coupons` set user_id=:user_id WHERE id=:id", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	_, err = res.RowsAffected()
+
+	if err != nil {
+		utils.Errorf(err)
+		return false, err
+	}
+
+	return true, nil
+
+}
+
+func (rep *CouponRepository) UpdateCouponStatus(coupon model.CouponModel, userId uint64) (bool, error) {
+
+	used := coupon.Used
+	userIdToInsert := userId
+
+	if coupon.Type == "multiple" {
+		used = used + 1
+		userIdToInsert = 0
+	}
+
+	queryMap := map[string]interface{}{"id": coupon.ID, "user_id": userIdToInsert, "used": used}
+
+	res, err := rep.Db.NamedExec("Update `coupons` set user_id=nullif(:user_id,0), used=:used WHERE id=:id", queryMap)
 
 	if err != nil {
 		utils.Errorf(err)
