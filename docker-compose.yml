@@ -9,32 +9,41 @@ services:
     # depends_on: 
     #   - mysql
     ports:
+      - 6000:8080 
+  words-combinator-dev:
+    container_name: words-combinator
+    build:
+      context: ./
+      dockerfile: ./word-combinator.dockerfile
+    # depends_on: 
+    #   - mysql
+    ports:
       - 6001:8080 
-  mysql:
-    image: mysql:8.0.33
-    container_name: mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASS}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASS}
-    ports:
-      - "6002:3306"
-    volumes:
-      - ./db-data/mysql:/var/lib/mysql
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: pma
-    links:
-      - mysql
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      # PMA_USER: ${DB_USER}
-      # PMA_PASSWORD: ${DB_PASS}
-      PMA_ARBITRARY: 1
-      MEMORY_LIMIT: 512M
-      UPLOAD_LIMIT: 512M
-    ports:
-      - 6003:80
+  # mysql:
+  #   image: mysql:8.0.33
+  #   container_name: mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${DB_PASS}
+  #     MYSQL_DATABASE: ${DB_NAME}
+  #     MYSQL_USER: ${DB_USER}
+  #     MYSQL_PASSWORD: ${DB_PASS}
+  #   ports:
+  #     - "6002:3306"
+  #   volumes:
+  #     - ./db-data/mysql:/var/lib/mysql
+  # phpmyadmin:
+  #   image: phpmyadmin/phpmyadmin
+  #   container_name: pma
+  #   links:
+  #     - mysql
+  #   environment:
+  #     PMA_HOST: mysql
+  #     PMA_PORT: 3306
+  #     # PMA_USER: ${DB_USER}
+  #     # PMA_PASSWORD: ${DB_PASS}
+  #     PMA_ARBITRARY: 1
+  #     MEMORY_LIMIT: 512M
+  #     UPLOAD_LIMIT: 512M
+  #   ports:
+  #     - 6003:80
 
