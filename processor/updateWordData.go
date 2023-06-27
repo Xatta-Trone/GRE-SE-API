@@ -18,7 +18,7 @@ func ProcessSingleWordData(db *sqlx.DB, word model.WordModel) []model.Combined {
 	var result []model.Combined
 
 	// check if the there is data in the wordlist table
-	data, err := CheckWordListTable(db, word)
+	data, err := CheckWordListTable(db, word.Word)
 
 	fmt.Println("===inside ProcessSingleWordData ==")
 	// fmt.Println(data, err)
@@ -83,11 +83,11 @@ func InsertIntoWordListTable(db *sqlx.DB, word string) (model.Result, error) {
 
 }
 
-func CheckWordListTable(db *sqlx.DB, word model.WordModel) (model.Result, error) {
+func CheckWordListTable(db *sqlx.DB, word string) (model.Result, error) {
 
 	query := "SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus`,`mw` FROM `wordlist` WHERE `word` = ?;"
 
-	result := db.QueryRowx(query, word.Word)
+	result := db.QueryRowx(query, word)
 
 	var model model.Result
 
@@ -369,7 +369,7 @@ func getPartsOfSpeechIndex(results []model.Combined, pos string) int {
 	return -1
 }
 
-func SaveProcessedDataToWordTable(db *sqlx.DB, word model.WordModel, wordData []model.Combined) {
+func SaveProcessedDataToWordTable(db *sqlx.DB, word string, wordId int64, wordData []model.Combined) {
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -377,20 +377,20 @@ func SaveProcessedDataToWordTable(db *sqlx.DB, word model.WordModel, wordData []
 	}
 	// insert the word into the words table
 	wodDataModel := model.WordDataModel{
-		Word:            word.Word,
+		Word:            word,
 		PartsOfSpeeches: wordData,
 	}
 	data, err := json.Marshal(wodDataModel)
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
 	}
-	_, err = tx.Exec("Update words set word_data=? ,updated_at=now() where id=?", string(data), word.Id)
+	_, err = tx.Exec("Update words set word_data=? ,updated_at=now() where id=?", string(data), wordId)
 
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
 	}
 	// update the wordlist table
-	_, err = tx.Exec("Update wordlist set is_all_parsed=1 where word=?", word.Word)
+	_, err = tx.Exec("Update wordlist set is_all_parsed=1 where word=?", word)
 
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())

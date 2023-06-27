@@ -2,6 +2,7 @@
 FROM golang:1.20-alpine as builder
 RUN apk --no-cache add gcc g++ make git
 RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+RUN apk add chromium
 
 RUN mkdir /app
 # COPY . /app

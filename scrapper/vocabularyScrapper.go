@@ -7,10 +7,71 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/geziyor/geziyor"
+	"github.com/geziyor/geziyor/client"
 	"github.com/xatta-trone/words-combinator/utils"
 )
 
 func ScrapVocabulary(url string) ([]string, string, error) {
+	var words []string
+	var titleMeta string
+	var err error
+
+	geziyor.NewGeziyor(&geziyor.Options{
+		StartRequestsFunc: func(g *geziyor.Geziyor) {
+			g.GetRendered(url, g.Opt.ParseFunc)
+		},
+		ParseFunc: func(g *geziyor.Geziyor, r *client.Response) {
+			// fmt.Println(string(r.Body))
+
+			fmt.Println("response status code")
+			fmt.Println(r.StatusCode)
+
+			if r.StatusCode != http.StatusOK {
+				fmt.Println("There was an error, ", r.Status)
+				err = fmt.Errorf("%s", r.Status)
+			}
+
+			// get the title
+
+			title := r.HTMLDoc.Find("h1.title").Text()
+			title = strings.TrimSpace(title)
+
+			fmt.Print(title)
+
+			if len(title) > 0 {
+				titleMeta = title
+			}
+
+			// get the words
+			root := r.HTMLDoc.Find("ol.wordlist")
+
+			fmt.Println(root.Length())
+
+			if root.Length() == 1 {
+
+				root.Children().Each(func(i int, s *goquery.Selection) {
+					wordCheck := s.AttrOr("word", "")
+
+					fmt.Println(wordCheck)
+
+					if wordCheck != "" {
+						word := strings.TrimSpace(strings.ReplaceAll(wordCheck, "\n", " "))
+						words = append(words, word)
+
+					}
+
+				})
+
+			}
+
+		},
+	}).Start()
+
+	return words, titleMeta, err
+}
+
+func ScrapVocabularyOld(url string) ([]string, string, error) {
 	var words []string
 	var fileName string
 
