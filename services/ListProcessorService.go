@@ -2,6 +2,7 @@ package services
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -27,9 +28,9 @@ func NewListProcessorService(db *sqlx.DB) *ListProcessorService {
 
 type ListProcessorServiceInterface interface {
 	ProcessListMetaRecord(listMeta model.ListMetaModel)
-	InsertListWordRelation(wordId, listId int64) (error)
+	InsertListWordRelation(wordId, listId int64) error
 	ProcessWordsOfSingleGroup(words []string, listId int64)
-	GetWordsFromListMetaRecord(words string) ([]string)
+	GetWordsFromListMetaRecord(words string) []string
 }
 
 func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.ListMetaModel) {
@@ -47,13 +48,28 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 	// 2.4 run a function to get the word data form internet, then process the data then finally insert the processed data into words table
 
 	// 1. get the words slice either from array or url parser
-	var words []string
 
 	if listMeta.Words != nil {
+		var words []string
 		// fire words processor
 		fmt.Println(*listMeta.Words)
 		processedWordStruct := listService.GetWordsFromListMetaRecord(*listMeta.Words)
 		words = append(words, processedWordStruct...)
+
+		var folderId uint64
+
+		if listMeta.FolderId != nil {
+			folderId = *listMeta.FolderId
+		}
+
+		ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, listMeta.Name, listMeta.Visibility, listMeta.UserId, words, folderId)
+
+		if ok {
+			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+		} else {
+			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		}
+
 	}
 
 	if listMeta.Url != nil {
@@ -64,25 +80,200 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 
 	}
 
-	// crate list record from list meta record
-	listId, err := listService.CreateListRecordFromListMeta(listMeta, listMeta.Name, 0)
+	// // crate list record from list meta record
+	// listId, err := listService.CreateListRecordFromListMeta(listMeta, listMeta.Name, 0)
 
-	if err != nil {
-		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
-		return
-	}
+	// if err != nil {
+	// 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+	// 	return
+	// }
 
-	// now follow the steps
-	listService.ProcessWordsOfSingleGroup(words, listId)
+	// // now follow the steps
+	// // listService.ProcessWordsOfSingleGroup(words, listId)
 
-	// now add to saved lists
-	listService.AddToSavedList(uint64(listId), listMeta.UserId)
+	// // now add to saved lists
+	// listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
-	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+	// UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
 
-	fmt.Println(words)
+	// fmt.Println(words)
 	utils.PrintG("Processing complete")
 
+}
+
+func (listService *ListProcessorService) createListAndSaveWordsAndFolder(listMetaId uint64, listName string, listVisibility int, userId uint64, words []string, folderId uint64) bool {
+	allOk := true
+	// now create the list
+	listId, err := listService.CreateList(userId, listMetaId, listName, enums.ListVisibilityMe, folderId)
+
+	if err != nil {
+		// todo: add notification err
+		UpdateListMetaRecordStatus(listService.db, listMetaId, enums.ListMetaStatusError)
+		return false
+	}
+
+	// insert words into list
+	_, errWords := listService.InsertWordsIntoList(uint64(listId), words)
+
+	if len(errWords) > 0 {
+		// todo: insert a notification with missing words
+	}
+
+	// update list visibility
+	listService.UpdateListVisibility(uint64(listId), listVisibility)
+
+	listService.AddToSavedList(uint64(listId), userId)
+
+	return allOk
+
+}
+
+// Step 1.1
+func (listService *ListProcessorService) CreateList(userId uint64, listMetaId uint64, name string, visibility int, folderId uint64) (int64, error) {
+
+	if visibility == 0 {
+		// set as private
+		visibility = enums.ListVisibilityMe
+	}
+
+	// generate slug
+	slug := listService.GenerateUniqueListSlug(name)
+
+	queryMap := map[string]interface{}{"name": name, "slug": slug, "list_meta_id": listMetaId, "visibility": visibility, "user_id": userId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
+
+	// create the lists record
+	res, err := listService.db.NamedExec("Insert into lists(name,slug,list_meta_id,visibility,user_id,created_at,updated_at) values(:name,:slug,NullIf(:list_meta_id,0),:visibility,:user_id,:created_at,:updated_at)", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return -1, err
+	}
+
+	listId, err := res.LastInsertId()
+
+	if err != nil {
+		utils.Errorf(err)
+		return -1, err
+	}
+
+	if listId == 0 {
+		return -1, fmt.Errorf("there was a problem with the insertion. last id: %d", listId)
+	}
+
+	// now insert the folder
+
+	var folderIdToInsert uint64
+
+	if folderId != 0 {
+		folderIdToInsert = folderId
+	}
+
+	if folderIdToInsert != 0 {
+		// create the folder list relation
+		queryMapForListFolderRelation := map[string]interface{}{"list_id": listId, "folder_id": folderIdToInsert, "user_id": userId, "created_at": time.Now().UTC()}
+		_, err = listService.db.NamedExec("Insert ignore into folder_list_relation(folder_id,list_id) values(:folder_id,:list_id)", queryMapForListFolderRelation)
+		if err != nil {
+			utils.Errorf(err)
+			utils.PrintR("there was an error creating list folder relation \n")
+
+		}
+		// insert into saved lists
+		_, err = listService.db.NamedExec("Insert ignore into saved_lists(user_id,list_id,created_at) values(:user_id,:list_id,:created_at)", queryMapForListFolderRelation)
+		if err != nil {
+			utils.Errorf(err)
+			utils.PrintR("there was an error creating list folder relation \n")
+
+		}
+
+	}
+
+	return listId, nil
+
+}
+
+// Step 1.2
+func (listService *ListProcessorService) InsertWordsIntoList(listId uint64, words []string) (bool, []string) {
+	succeed := true
+	unsuccessWords := []string{}
+
+	// regex
+	var IsLetter = regexp.MustCompile(`^[a-zA-Z\s-]+$`).MatchString
+	// 2. for each word
+	// 2.1 check if word exists in the words table
+	// 2.2 if yes then map to list words relation table
+	// 2.3 if no then insert into words and also into word list and make the words_list table relation
+	// 2.4 run a function to get the word data form internet, then process the data then finally insert the processed data into words table
+
+	for _, word := range words {
+		if word == "" {
+			// double check safety
+			continue
+		}
+
+		// check if it contains letter space and -
+		if !IsLetter(word) {
+			unsuccessWords = append(unsuccessWords, word)
+			continue
+		}
+
+		// 2.1 check if word exists in the table
+		wordId, err := listService.CheckWordsTableForWord(word)
+
+		if err != nil && err != sql.ErrNoRows {
+			utils.Errorf(err)
+			utils.PrintR(fmt.Sprintf("Could not find the word %s in words table", word))
+		}
+
+		// if word exists then insert the relation
+		if wordId != 0 {
+			_ = listService.InsertListWordRelation(int64(wordId), int64(listId))
+			// go to the next word
+			continue
+		}
+
+		// if the word not exists
+		if err == sql.ErrNoRows {
+			// first check in word-data table
+			wordListId := listService.CheckWordListTableForWord(word)
+
+			if wordListId == 0 {
+				// todo: dump to words to scrap
+				unsuccessWords = append(unsuccessWords, word)
+				continue
+			}
+
+			if wordListId != 0 {
+				// process the word from the wordlist table and save to words table
+				wordDataRaw, err := processor.CheckWordListTable(listService.db, word)
+
+				if err != nil {
+					utils.Errorf(err)
+					unsuccessWords = append(unsuccessWords, word)
+					continue
+				}
+
+				wordProcessedData, _ := processor.ProcessWordData(listService.db, wordDataRaw)
+
+				// save to words table
+				wordModel, err := listService.InsertIntoWordsTableWithData(word, wordProcessedData)
+
+				if err != nil {
+					utils.Errorf(err)
+					unsuccessWords = append(unsuccessWords, word)
+					continue
+				}
+
+				// insert the words relation
+				_ = listService.InsertListWordRelation(int64(wordModel.Id), int64(listId))
+				// go to the next word
+				continue
+			}
+
+		}
+
+	}
+
+	return succeed, unsuccessWords
 }
 
 func (listService *ListProcessorService) ProcessWordsFromUrl(listMeta model.ListMetaModel) {
@@ -136,7 +327,6 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 		}
 
 		fmt.Println(words)
-		utils.Errorf(err)
 
 		if len(words) == 0 {
 			utils.PrintR("ProcessMemriseWords No word found ")
@@ -145,8 +335,16 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 
 		// list title
 		title := fmt.Sprintf("%s-Group-%d", memriseSet.Title, i+1)
+		title = utils.NormalizeString(title)
+
 		// crate list record from list meta record
-		listId, err := listService.CreateListRecordFromListMeta(listMeta, title, uint64(folderId))
+		ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
+
+		if !ok {
+			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		}
+
+		// listId, err := listService.CreateListRecordFromListMeta(listMeta, title, uint64(folderId))
 
 		if err != nil {
 			utils.Errorf(err)
@@ -155,12 +353,12 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 		}
 
 		// now follow the steps
-		listService.ProcessWordsOfSingleGroup(words, listId)
+		// listService.ProcessWordsOfSingleGroup(words, listId)
 		// now add to saved lists
-		listService.AddToSavedList(uint64(listId), listMeta.UserId)
+		// listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 	}
-
+	listService.UpdateFolderVisibility(uint64(folderId), listMeta.Visibility)
 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
 	utils.PrintG("Processing complete")
 
@@ -172,10 +370,16 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 	if strings.Contains(*listMeta.Url, "folders") && strings.Contains(*listMeta.Url, "sets") {
 		urls, setTitle, err := scrapper.GetQuizletUrlMaps(*listMeta.Url)
 
+		fmt.Println(setTitle)
+		fmt.Println(urls)
+
 		if err != nil {
+			utils.Errorf(err)
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
 			return
 		}
+
+		
 
 		// create the folder
 		// crate folder record from list meta record
@@ -194,9 +398,14 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 			words, title, err := scrapper.ScrapQuizlet(set.Url)
 
 			if err != nil {
+				utils.Errorf(err)
 				UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
 				return
 			}
+			if title == "" {
+				title = "Unknown title"
+			}
+			title = utils.NormalizeString(title)
 
 			fmt.Println(words)
 			fmt.Println(title)
@@ -207,20 +416,30 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 				return
 			}
 
-			// crate list record from list meta record
-			listId, err := listService.CreateListRecordFromListMeta(listMeta, title, uint64(folderId))
+			// // crate list record from list meta record
+			// listId, err := listService.CreateListRecordFromListMeta(listMeta, title, uint64(folderId))
 
-			if err != nil {
+			// if err != nil {
+			// 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+			// 	return
+			// }
+
+			// // now follow the steps
+			// listService.ProcessWordsOfSingleGroup(words, listId)
+			// // now add to saved lists
+			// listService.AddToSavedList(uint64(listId), listMeta.UserId)
+
+			// crate list record from list meta record
+			ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
+
+			if !ok {
 				UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
 				return
+
 			}
 
-			// now follow the steps
-			listService.ProcessWordsOfSingleGroup(words, listId)
-			// now add to saved lists
-			listService.AddToSavedList(uint64(listId), listMeta.UserId)
-
 		}
+		listService.UpdateFolderVisibility(uint64(folderId), listMeta.Visibility)
 
 	} else {
 
@@ -230,6 +449,8 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
 			return
 		}
+
+		title = utils.NormalizeString(title)
 
 		fmt.Println(words)
 		fmt.Println(title)
@@ -241,18 +462,25 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 		}
 
 		// crate list record from list meta record
-		listId, err := listService.CreateListRecordFromListMeta(listMeta, title, 0)
+		// listId, err := listService.CreateListRecordFromListMeta(listMeta, title, 0)
 
-		if err != nil {
+		// if err != nil {
+		// 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		// 	return
+		// }
+
+		// // now follow the steps
+		// listService.ProcessWordsOfSingleGroup(words, listId)
+
+		// // now add to saved lists
+		// listService.AddToSavedList(uint64(listId), listMeta.UserId)
+
+		ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, title, listMeta.Visibility, listMeta.UserId, words, 0)
+
+		if !ok {
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
 			return
 		}
-
-		// now follow the steps
-		listService.ProcessWordsOfSingleGroup(words, listId)
-
-		// now add to saved lists
-		listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 	}
 
@@ -278,19 +506,34 @@ func (listService *ListProcessorService) ProcessVocabularyWords(listMeta model.L
 		return
 	}
 
-	// crate list record from list meta record
-	listId, err := listService.CreateListRecordFromListMeta(listMeta, title, 0)
+	if title == "" {
+		title = "Unknown title"
+	}
 
-	if err != nil {
+	title = utils.NormalizeString(title)
+
+	// crate list record from list meta record
+	// listId, err := listService.CreateListRecordFromListMeta(listMeta, title, 0)
+	// if err != nil {
+	// 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+	// 	return
+	// }
+
+	// now follow the steps
+	// listService.ProcessWordsOfSingleGroup(words, listId)
+
+	// add to saved list
+	// listService.AddToSavedList(uint64(listId), listMeta.UserId)
+
+	// crate list record from list meta record
+	ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, title, listMeta.Visibility, listMeta.UserId, words, 0)
+
+	if !ok {
 		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		utils.PrintR("Processing error ")
 		return
 	}
 
-	// now follow the steps
-	listService.ProcessWordsOfSingleGroup(words, listId)
-
-	// add to saved list
-	listService.AddToSavedList(uint64(listId), listMeta.UserId)
 	// update the list meta status
 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
 	utils.PrintG("Processing complete")
@@ -348,7 +591,7 @@ func (listService *ListProcessorService) ProcessWordsOfSingleGroup(words []strin
 
 			if len(processedWordData) > 0 {
 				// now update the words table with this data
-				processor.SaveProcessedDataToWordTable(listService.db, wordModel, processedWordData)
+				processor.SaveProcessedDataToWordTable(listService.db, wordModel.Word, wordModel.Id, processedWordData)
 				// now insert the relation
 				_ = listService.InsertListWordRelation(wordModel.Id, listId)
 				fmt.Printf("inserted into word list and inserted word relation with word id %d list id %d\n", checkId, listId)
@@ -401,6 +644,53 @@ func (listService *ListProcessorService) InsertIntoWordsTable(word string) (mode
 	return model, nil
 }
 
+// :keep
+func (listService *ListProcessorService) InsertIntoWordsTableWithData(word string, wordData []model.Combined) (model.WordModel, error) {
+	var modelToExport model.WordModel
+
+	// insert the word into the words table
+	wodDataModel := model.WordDataModel{
+		Word:            word,
+		PartsOfSpeeches: wordData,
+	}
+
+	data, _ := json.Marshal(wodDataModel)
+
+	queryMap := map[string]interface{}{"word": word, "wordJsonData": data, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
+
+	res, err := listService.db.NamedExec("Insert into words(word,word_data,created_at,updated_at) values(:word,:wordJsonData,:created_at,:updated_at)", queryMap)
+
+	if err != nil {
+		utils.Errorf(err)
+		return modelToExport, err
+	}
+
+	lastId, err := res.LastInsertId()
+
+	if err != nil {
+		utils.Errorf(err)
+		return modelToExport, err
+	}
+
+	if lastId == 0 {
+		return modelToExport, fmt.Errorf("there was a problem with the insertion. last id: %d", lastId)
+	}
+
+	query := "SELECT * FROM `words` WHERE `id` = ?;"
+
+	result := listService.db.QueryRowx(query, lastId)
+
+	err = result.StructScan(&modelToExport)
+
+	if err != nil {
+		utils.Errorf(err)
+		return modelToExport, err
+	}
+
+	return modelToExport, nil
+}
+
+// :keep
 func (listService *ListProcessorService) InsertListWordRelation(wordId, listId int64) error {
 
 	queryMap := map[string]interface{}{"word_id": wordId, "list_id": listId, "created_at": time.Now().UTC()}
@@ -427,6 +717,7 @@ func (listService *ListProcessorService) InsertListWordRelation(wordId, listId i
 
 }
 
+// :keep
 func (listService *ListProcessorService) CheckWordsTableForWord(word string) (uint64, error) {
 
 	query := "SELECT `id` FROM `words` WHERE `word` = ?;"
@@ -446,12 +737,43 @@ func (listService *ListProcessorService) CheckWordsTableForWord(word string) (ui
 
 }
 
+// :keep
+func (listService *ListProcessorService) CheckWordListTableForWord(word string) uint64 {
+
+	query := "SELECT `id` FROM `wordlist` WHERE `word` = ?;"
+
+	result := listService.db.QueryRowx(query, word)
+	var ResultId uint64
+
+	err := result.Scan(&ResultId)
+
+	if err != nil {
+		utils.Errorf(err)
+		return ResultId
+	}
+
+	return ResultId
+
+}
+
 func UpdateListMetaRecordStatus(db *sqlx.DB, id uint64, status int) {
 
 	queryMap := map[string]interface{}{"id": id, "status": status, "updated_at": time.Now().UTC()}
 
 	db.NamedExec("Update list_meta set status=:status,updated_at=:updated_at where id=:id", queryMap)
 
+}
+
+// :keep
+func (listService *ListProcessorService) UpdateListVisibility(listId uint64, visibility int) {
+	queryMap := map[string]interface{}{"id": listId, "visibility": visibility, "updated_at": time.Now().UTC()}
+	listService.db.NamedExec("Update lists set visibility=:visibility,updated_at=:updated_at where id=:id", queryMap)
+}
+
+// :keep
+func (listService *ListProcessorService) UpdateFolderVisibility(folderId uint64, visibility int) {
+	queryMap := map[string]interface{}{"id": folderId, "visibility": visibility, "updated_at": time.Now().UTC()}
+	listService.db.NamedExec("Update folders set visibility=:visibility,updated_at=:updated_at where id=:id", queryMap)
 }
 
 func (listService *ListProcessorService) GetWordsFromListMetaRecord(words string) []string {
@@ -480,30 +802,6 @@ func (listService *ListProcessorService) GetWordsFromListMetaRecord(words string
 	}
 
 	return processedWords
-}
-
-func (listService *ListProcessorService) GenerateUniqueListSlug(title string) string {
-
-	slug := slug.Make(title)
-	// now check the slug
-
-	row := listService.db.QueryRow("SELECT Count(id) FROM lists WHERE slug like ?", fmt.Sprintf("%%%s-%%", slug))
-	var totalCount int
-	err := row.Scan(&totalCount)
-
-	// fmt.Println(slug, fmt.Sprintf("%s-%%", slug), totalCount)
-
-	if err != nil {
-		// just add the timestamp and return
-		return fmt.Sprintf("%s-%d", slug, time.Now().UnixMilli())
-	}
-
-	if totalCount > 0 {
-		return fmt.Sprintf("%s-%d", slug, totalCount+1)
-
-	}
-
-	return fmt.Sprintf("%s-%d", slug, 0)
 }
 
 // here the title is different because it could be parsed from the other sources like quizlet or so...
@@ -584,7 +882,7 @@ func (listService *ListProcessorService) CreateFolderFromListMeta(listMeta model
 
 	slug := listService.GenerateUniqueFolderSlug(title)
 
-	queryMap := map[string]interface{}{"name": title, "slug": slug, "list_meta_id": listMeta.Id, "visibility": listMeta.Visibility, "user_id": listMeta.UserId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
+	queryMap := map[string]interface{}{"name": title, "slug": slug, "list_meta_id": listMeta.Id, "visibility": enums.FolderVisibilityMe, "user_id": listMeta.UserId, "created_at": time.Now().UTC(), "updated_at": time.Now().UTC()}
 
 	res, err := listService.db.NamedExec("Insert into folders(name,slug,list_meta_id,visibility,user_id,created_at,updated_at) values(:name,:slug,:list_meta_id,:visibility,:user_id,:created_at,:updated_at)", queryMap)
 
@@ -621,9 +919,33 @@ func (listService *ListProcessorService) CreateFolderFromListMeta(listMeta model
 
 }
 
+func (listService *ListProcessorService) GenerateUniqueListSlug(title string) string {
+
+	slug := fmt.Sprintf("%s-%d", slug.Make(title), time.Now().UnixMilli())
+	// now check the slug
+
+	row := listService.db.QueryRow("SELECT Count(id) FROM lists WHERE slug like ?", fmt.Sprintf("%%%s-%%", slug))
+	var totalCount int
+	err := row.Scan(&totalCount)
+
+	// fmt.Println(slug, fmt.Sprintf("%s-%%", slug), totalCount)
+
+	if err != nil {
+		// just add the timestamp and return
+		return fmt.Sprintf("%s-%d", slug, time.Now().UnixMilli())
+	}
+
+	if totalCount > 0 {
+		return fmt.Sprintf("%s-%d", slug, totalCount+1)
+
+	}
+
+	return slug
+}
+
 func (listService *ListProcessorService) GenerateUniqueFolderSlug(title string) string {
 
-	slug := slug.Make(title)
+	slug := fmt.Sprintf("%s-%d", slug.Make(title), time.Now().UnixMilli())
 	// now check the slug
 
 	row := listService.db.QueryRow("SELECT Count(id) FROM folders WHERE slug like ?", fmt.Sprintf("%%%s-%%", slug))
@@ -642,7 +964,7 @@ func (listService *ListProcessorService) GenerateUniqueFolderSlug(title string) 
 
 	}
 
-	return fmt.Sprintf("%s-%d", slug, 0)
+	return slug
 }
 
 func (listService *ListProcessorService) AddToSavedList(listId, userId uint64) {

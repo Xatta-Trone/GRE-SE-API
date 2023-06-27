@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 
@@ -25,6 +26,27 @@ func PrintR(str string) {
 }
 
 var normalizer = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+ var ExtraCutSet = fmt.Sprintf("%v", '\uFEFF')
+ var ExtraCutSet2 = fmt.Sprintf("%v", '\ufeff')
+
+func NormalizeString(str string) string {
+	str = strings.TrimSpace(strings.Join(strings.Fields(str), " "))
+
+	s, _, err := transform.String(normalizer, str)
+
+	if err != nil {
+		return str
+	}
+
+	str = strings.Trim(strings.TrimSpace(s), ExtraCutSet)
+	str = strings.Trim(strings.TrimSpace(str), ExtraCutSet2)
+	// replace underscores and slashes
+	processedWord := strings.Replace(str, "'", "", -1)
+	processedWord = strings.Replace(processedWord, "\\", "", -1)
+	processedWord = strings.Replace(processedWord, "_", "-", -1)
+
+	return processedWord
+}
 
 func ProcessWord(str string) []string {
 

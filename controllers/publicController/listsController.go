@@ -359,7 +359,7 @@ func (ctl *ListsController) Create(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"data":    listMeta,
-		"message": "Your list has been created. You will get a notification after processing the list shortly.",
+		"message": "Your list has been created. Please check back after a while.",
 	})
 }
 

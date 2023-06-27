@@ -130,7 +130,7 @@ func (wgService *WordGroupService) ProcessNewWords(newWords []model.WordModel, g
 		processedWordData := processor.ProcessSingleWordData(wgService.db, word)
 
 		// save to the database
-		processor.SaveProcessedDataToWordTable(wgService.db, word, processedWordData)
+		processor.SaveProcessedDataToWordTable(wgService.db, word.Word,word.Id, processedWordData)
 	}
 
 	// update the word groups id status to complete
