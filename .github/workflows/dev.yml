@@ -39,14 +39,14 @@ jobs:
           cd /var/www/word-combinator-dev
           git checkout staging
           git pull origin staging
-          make mgup
-          sudo go build -o app 
-          sudo pm2 restart words-combinator-dev
-          sudo pm2 status
-          # sudo docker compose up words-combinator -d --build
-          # sudo docker compose ps
-          # sudo docker compose exec -i words-combinator sh "./script.sh"
-          # sudo docker image prune -a -f
-          # sudo docker system prune -f
+          # make mgup
+          # sudo go build -o app 
+          # sudo pm2 restart words-combinator-dev
+          # sudo pm2 status
+          sudo docker compose up words-combinator-dev -d --build
+          sudo docker compose ps
+          sudo docker compose exec -i words-combinator sh "./script.sh"
+          sudo docker image prune -a -f
+          sudo docker system prune -f
           # sudo systemctl daemon-reload
           # sudo systemctl restart word-combinator-dev
