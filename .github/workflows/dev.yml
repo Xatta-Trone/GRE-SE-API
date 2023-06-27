@@ -43,7 +43,7 @@ jobs:
           # sudo go build -o app 
           # sudo pm2 restart words-combinator-dev
           # sudo pm2 status
-          sudo docker compose up words-combinator-dev -d --build
+          sudo docker compose up words-combinator -d --build
           sudo docker compose ps
           sudo docker compose exec -i words-combinator sh "./script.sh"
           sudo docker image prune -a -f
