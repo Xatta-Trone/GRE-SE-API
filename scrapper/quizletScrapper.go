@@ -63,7 +63,7 @@ func ScrapQuizlet(url string) ([]string, string, error) {
 				})
 
 				// find the title
-				titleText := root.Find("div.SetPage-titleWrapper").Text()
+				titleText := root.Find("div.SetPage-breadcrumbTitleWrapper").Text()
 				title := strings.TrimSpace(titleText)
 				// title = strings.ReplaceAll(title, " ", "-")
 				title = strings.ReplaceAll(title, ":", "")

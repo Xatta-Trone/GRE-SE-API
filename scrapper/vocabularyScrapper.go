@@ -14,7 +14,7 @@ import (
 
 func ScrapVocabulary(url string) ([]string, string, error) {
 	var words []string
-	var fileName string
+	var titleMeta string
 	var err error
 
 	geziyor.NewGeziyor(&geziyor.Options{
@@ -40,7 +40,7 @@ func ScrapVocabulary(url string) ([]string, string, error) {
 			fmt.Print(title)
 
 			if len(title) > 0 {
-				fileName = title
+				titleMeta = title
 			}
 
 			// get the words
@@ -68,7 +68,7 @@ func ScrapVocabulary(url string) ([]string, string, error) {
 		},
 	}).Start()
 
-	return words, fileName, err
+	return words, titleMeta, err
 }
 
 func ScrapVocabularyOld(url string) ([]string, string, error) {
