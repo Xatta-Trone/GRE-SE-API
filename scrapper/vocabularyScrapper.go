@@ -24,6 +24,9 @@ func ScrapVocabulary(url string) ([]string, string, error) {
 		ParseFunc: func(g *geziyor.Geziyor, r *client.Response) {
 			// fmt.Println(string(r.Body))
 
+			fmt.Println("response status code")
+			fmt.Println(r.StatusCode)
+
 			if r.StatusCode != http.StatusOK {
 				fmt.Println("There was an error, ", r.Status)
 				err = fmt.Errorf("%s", r.Status)
