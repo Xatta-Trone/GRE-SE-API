@@ -11,7 +11,7 @@ services:
     ports:
       - 6000:8080 
   words-combinator-dev:
-    container_name: words-combinator
+    container_name: words-combinator-dev
     build:
       context: ./
       dockerfile: ./word-combinator.dockerfile
