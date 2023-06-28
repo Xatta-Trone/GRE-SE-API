@@ -6,15 +6,15 @@ name: Dev Deploy
 on:
   push:
     branches: [ "staging" ]
-  pull_request:
-    types:
-    - closed
-    branches: [ "staging" ]
+  # pull_request:
+  #   types:
+  #   - closed
+  #   branches: [ "staging" ]
 
 jobs:
 
   build:
-    if: github.event.pull_request.merged == true || github.event_name == 'push'
+    # if: github.event.pull_request.merged == true || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3

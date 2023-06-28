@@ -6,15 +6,15 @@ name: Prod Deploy
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    types:
-    - closed
-    branches: [ "main" ]
+  # pull_request:
+  #   types:
+  #   - closed
+  #   branches: [ "main" ]
 
 jobs:
 
   build:
-    if: github.event.pull_request.merged == true || github.event_name == 'push'
+    # if: github.event.pull_request.merged == true || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
