@@ -8,7 +8,7 @@ import (
 type SavedListsIndexReqStruct struct {
 	ID      int    `form:"id,default=0" json:"id"`
 	Query   string `form:"query" json:"query"`
-	OrderBy string `form:"order_by,default=id" json:"order_by" `
+	OrderBy string `form:"order_by,default=created_at" json:"order_by" `
 	Order   string `form:"order,default=desc" json:"order" `
 	Page    int    `form:"page,default=1" json:"page"`
 	PerPage int    `form:"per_page,default=20" json:"per_page"`

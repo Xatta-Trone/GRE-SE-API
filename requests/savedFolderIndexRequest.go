@@ -8,7 +8,7 @@ import (
 type SavedFolderIndexReqStruct struct {
 	ID       int    `form:"id,default=0" json:"id"`
 	Query    string `form:"query" json:"query"`
-	OrderBy  string `form:"order_by,default=id" json:"order_by" `
+	OrderBy  string `form:"order_by,default=created_at" json:"order_by" `
 	Order    string `form:"order,default=0" json:"order" `
 	OrderDir string `form:"order_dir,default=desc" json:"order_dir" `
 	Page     int    `form:"page,default=1" json:"page"`
