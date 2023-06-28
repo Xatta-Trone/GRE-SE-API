@@ -373,8 +373,7 @@ func (ctl *ListsController) SaveListItem(c *gin.Context) {
 	// now attach the user in the list meta
 	user, _ = ctl.userRepo.FindOne(int(userId))
 
-
-	// check user limit 
+	// check user limit
 	if user.ExpiresOn == nil {
 		// check lists count
 		listLimitString := os.Getenv("FREE_LISTS")
@@ -387,11 +386,10 @@ func (ctl *ListsController) SaveListItem(c *gin.Context) {
 		}
 	}
 
-	if !time.Now().UTC().After(*user.ExpiresOn) {
+	if user.ExpiresOn != nil && time.Now().UTC().After(*user.ExpiresOn) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": "You do not have the premium plan or expired."})
 		return
 	}
-
 
 	// request validation
 	req, err := requests.SavedListsCreateRequest(c)

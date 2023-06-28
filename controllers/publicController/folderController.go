@@ -262,8 +262,11 @@ func (ctl *FolderController) Create(c *gin.Context) {
 	// now attach the user in the list meta
 	user, _ = ctl.userRepo.FindOne(int(userId))
 
+	if user.ExpiresOn != nil && time.Now().UTC().After(*user.ExpiresOn) {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": "You do not have the premium plan or expired."})
+		return
+	}
 
-	
 	// check folder limit
 	if user.ExpiresOn == nil {
 		// permissible folder count
@@ -272,7 +275,7 @@ func (ctl *FolderController) Create(c *gin.Context) {
 		// count folders
 		folderCount := ctl.repository.GetFoldersCount(userId)
 
-		fmt.Println(folderCount,folderLimit)
+		fmt.Println(folderCount, folderLimit)
 
 		if folderCount >= folderLimit {
 			c.JSON(http.StatusBadRequest, gin.H{"errors": "Free limit exceeded."})
@@ -291,7 +294,6 @@ func (ctl *FolderController) Create(c *gin.Context) {
 
 	// set the user id
 	req.UserId = userId
-
 
 	// now create the record
 	folder, err := ctl.repository.Create(req)
@@ -317,8 +319,7 @@ func (ctl *FolderController) SaveFolder(c *gin.Context) {
 	// now attach the user in the list meta
 	user, _ = ctl.userRepo.FindOne(int(userId))
 
-
-	// check user limit 
+	// check user limit
 	if user.ExpiresOn == nil {
 		// check lists count
 		folderLimitString := os.Getenv("FREE_FOLDERS")
@@ -331,13 +332,10 @@ func (ctl *FolderController) SaveFolder(c *gin.Context) {
 		}
 	}
 
-	if !time.Now().UTC().After(*user.ExpiresOn) {
+	if user.ExpiresOn != nil && time.Now().UTC().After(*user.ExpiresOn) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": "You do not have the premium plan or expired."})
 		return
 	}
-
-
-
 
 	folderId, err := utils.ParseParamToUint64(c, "folder_id")
 
