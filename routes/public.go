@@ -30,6 +30,10 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	learningStatusRepo := repository.NewLearningStatusRepository(database.Gdb)
 	learningStatusController := publicController.NewLearningStatusController(learningStatusRepo)
 
+	// notification 
+	notificationRepo := repository.NewNotificationRepository(database.Gdb)
+	notificationController := publicController.NewNotificationController(notificationRepo, userRepo)
+
 	public := r.Group("/")
 
 	public.POST("/register", authController.Register)
@@ -53,6 +57,10 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 	authRoutes.PATCH("/update", authController.Update)
 	authRoutes.POST("upgrade-user",authController.Upgrade)
 	authRoutes.GET("upgrade-user",authController.PurchaseSuccess)
+
+	// notifications
+	authRoutes.GET("/notifications",notificationController.Index)
+	authRoutes.GET("/notifications-mar",notificationController.MarkAsRead)
 
 	// lists
 	authRoutes.GET("/lists", listController.Index)
