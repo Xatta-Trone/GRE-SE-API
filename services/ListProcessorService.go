@@ -4,10 +4,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/disgoorg/disgo/discord"
+	"github.com/disgoorg/disgo/webhook"
 	"github.com/gosimple/slug"
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/enums"
@@ -62,7 +65,7 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 			folderId = *listMeta.FolderId
 		}
 
-		ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, listMeta.Name, listMeta.Visibility, listMeta.UserId, words, folderId)
+		ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, listMeta.Name, listMeta.Visibility, listMeta.UserId, words, folderId)
 
 		if ok {
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
@@ -101,22 +104,25 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 
 }
 
-func (listService *ListProcessorService) createListAndSaveWordsAndFolder(listMetaId uint64, listName string, listVisibility int, userId uint64, words []string, folderId uint64) bool {
+func (listService *ListProcessorService) createListAndSaveWordsAndFolder(listMeta model.ListMetaModel, listName string, listVisibility int, userId uint64, words []string, folderId uint64) (bool,[]string) {
 	allOk := true
+	unsuccessfulWords := []string{}
 	// now create the list
-	listId, err := listService.CreateList(userId, listMetaId, listName, enums.ListVisibilityMe, folderId)
+	listId, err := listService.CreateList(userId, listMeta.Id, listName, enums.ListVisibilityMe, folderId)
 
 	if err != nil {
 		// todo: add notification err
-		UpdateListMetaRecordStatus(listService.db, listMetaId, enums.ListMetaStatusError)
-		return false
+		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		return false,unsuccessfulWords
 	}
 
 	// insert words into list
 	_, errWords := listService.InsertWordsIntoList(uint64(listId), words)
 
 	if len(errWords) > 0 {
+		unsuccessfulWords = errWords
 		// todo: insert a notification with missing words
+		listService.ProcessUnSuccessfulWords(listMeta, errWords, uint64(listId))
 	}
 
 	// update list visibility
@@ -124,7 +130,7 @@ func (listService *ListProcessorService) createListAndSaveWordsAndFolder(listMet
 
 	listService.AddToSavedList(uint64(listId), userId)
 
-	return allOk
+	return allOk,unsuccessfulWords
 
 }
 
@@ -338,7 +344,7 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 		title = utils.NormalizeString(title)
 
 		// crate list record from list meta record
-		ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
+		ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
 
 		if !ok {
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
@@ -378,8 +384,6 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
 			return
 		}
-
-		
 
 		// create the folder
 		// crate folder record from list meta record
@@ -430,7 +434,7 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 			// listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 			// crate list record from list meta record
-			ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
+			ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
 
 			if !ok {
 				UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
@@ -475,7 +479,7 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 		// // now add to saved lists
 		// listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
-		ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, title, listMeta.Visibility, listMeta.UserId, words, 0)
+		ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, 0)
 
 		if !ok {
 			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
@@ -526,7 +530,7 @@ func (listService *ListProcessorService) ProcessVocabularyWords(listMeta model.L
 	// listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 	// crate list record from list meta record
-	ok := listService.createListAndSaveWordsAndFolder(listMeta.Id, title, listMeta.Visibility, listMeta.UserId, words, 0)
+	ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, 0)
 
 	if !ok {
 		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
@@ -987,4 +991,52 @@ func (listService *ListProcessorService) AddToSavedFolders(folderId, userId uint
 	if err != nil {
 		utils.Errorf(err)
 	}
+}
+
+func (listService *ListProcessorService) ProcessUnSuccessfulWords(listMeta model.ListMetaModel, words []string, listId uint64) {
+
+	wordList := []model.PendingWordModel{}
+
+	for _, word := range words {
+		w := model.PendingWordModel{
+			Word:       word,
+			ListId: listId,
+		}
+
+		wordList = append(wordList, w)
+	}
+
+	_, err := listService.db.NamedExec(`INSERT INTO pending_words (word,list_id) VALUES (:word,:list_id)`, wordList)
+
+	if err != nil {
+		utils.Errorf(err)
+		return
+	}
+
+	// send notification
+
+	url := os.Getenv("DISCORD_WEBHOOK_URL") 
+
+	if url == "" {
+		url = "https://discord.com/api/webhooks/1123787115050844181/roFKRIy_iZ6SWhfNHEtue4rbVixP1X_PKBRcJPl5N73DCkwnyCgSSMeBO733ZcQG2hgr"
+	}
+
+	client, err := webhook.NewWithURL(url)
+
+	if err != nil {
+		utils.Errorf(err)
+		return
+	}
+
+	msg := fmt.Sprintf("%d words needs to be checked, for list id %d \n :: words :: \n %s",len(words),listId, strings.Join(words,", "))
+
+	_, err = client.CreateMessage(discord.WebhookMessageCreate{
+		Content: msg,
+	})
+
+	if err != nil {
+		utils.Errorf(err)
+		return
+	}
+
 }
