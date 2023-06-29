@@ -13,6 +13,7 @@ import (
 	"github.com/disgoorg/disgo/webhook"
 	"github.com/gosimple/slug"
 	"github.com/jmoiron/sqlx"
+	"github.com/oklog/ulid/v2"
 	"github.com/xatta-trone/words-combinator/enums"
 	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/processor"
@@ -38,7 +39,8 @@ type ListProcessorServiceInterface interface {
 
 func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.ListMetaModel) {
 	// update the list meta table
-	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusParsing)
+	listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusParsing)
+	listService.SendNotification(listMeta, enums.ListMetaStatusParsing, "")
 
 	// now check the type of word to be processed...URL or word
 
@@ -65,12 +67,16 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 			folderId = *listMeta.FolderId
 		}
 
-		ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, listMeta.Name, listMeta.Visibility, listMeta.UserId, words, folderId)
+		_, unprocessedWords := listService.createListAndSaveWordsAndFolder(listMeta, listMeta.Name, listMeta.Visibility, listMeta.UserId, words, folderId)
+		fmt.Println(unprocessedWords)
 
-		if ok {
-			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+		if len(unprocessedWords) == 0 {
+			listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusComplete)
+			listService.SendNotification(listMeta, enums.ListMetaStatusComplete, "")
 		} else {
-			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+			listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusError)
+			additionalText := fmt.Sprintf("we could not process these words %s", strings.Join(unprocessedWords, ","))
+			listService.SendNotification(listMeta, enums.ListMetaStatusError, additionalText)
 		}
 
 	}
@@ -104,7 +110,7 @@ func (listService *ListProcessorService) ProcessListMetaRecord(listMeta model.Li
 
 }
 
-func (listService *ListProcessorService) createListAndSaveWordsAndFolder(listMeta model.ListMetaModel, listName string, listVisibility int, userId uint64, words []string, folderId uint64) (bool,[]string) {
+func (listService *ListProcessorService) createListAndSaveWordsAndFolder(listMeta model.ListMetaModel, listName string, listVisibility int, userId uint64, words []string, folderId uint64) (bool, []string) {
 	allOk := true
 	unsuccessfulWords := []string{}
 	// now create the list
@@ -112,15 +118,15 @@ func (listService *ListProcessorService) createListAndSaveWordsAndFolder(listMet
 
 	if err != nil {
 		// todo: add notification err
-		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
-		return false,unsuccessfulWords
+		listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusError)
+		return false, unsuccessfulWords
 	}
 
 	// insert words into list
 	_, errWords := listService.InsertWordsIntoList(uint64(listId), words)
 
 	if len(errWords) > 0 {
-		unsuccessfulWords = errWords
+		unsuccessfulWords = append(unsuccessfulWords, errWords...)
 		// todo: insert a notification with missing words
 		listService.ProcessUnSuccessfulWords(listMeta, errWords, uint64(listId))
 	}
@@ -130,7 +136,7 @@ func (listService *ListProcessorService) createListAndSaveWordsAndFolder(listMet
 
 	listService.AddToSavedList(uint64(listId), userId)
 
-	return allOk,unsuccessfulWords
+	return allOk, unsuccessfulWords
 
 }
 
@@ -306,7 +312,8 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 
 	if err != nil {
 		utils.Errorf(err)
-		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+		listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusURLError)
+		listService.SendNotification(listMeta, enums.ListMetaStatusURLError, "")
 		return
 	}
 
@@ -316,7 +323,8 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 
 	if err != nil {
 		utils.Errorf(err)
-		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusError)
+		listService.SendNotification(listMeta, enums.ListMetaStatusError, "")
 		return
 	}
 
@@ -328,7 +336,8 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 
 		if err != nil {
 			utils.Errorf(err)
-			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+			listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusURLError)
+			listService.SendNotification(listMeta, enums.ListMetaStatusURLError, "")
 			return
 		}
 
@@ -344,19 +353,24 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 		title = utils.NormalizeString(title)
 
 		// crate list record from list meta record
-		ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
+		_, unprocessedWords := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
+		fmt.Println(unprocessedWords)
 
-		if !ok {
-			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		if len(unprocessedWords) > 0 {
+			listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusError)
+
+			additionalText := fmt.Sprintf("we could not process these words %s", strings.Join(unprocessedWords, ","))
+			listService.SendNotification(listMeta, enums.ListMetaStatusError, additionalText)
+			return
 		}
 
 		// listId, err := listService.CreateListRecordFromListMeta(listMeta, title, uint64(folderId))
 
-		if err != nil {
-			utils.Errorf(err)
-			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
-			return
-		}
+		// if err != nil {
+		// 	utils.Errorf(err)
+		// 	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		// 	return
+		// }
 
 		// now follow the steps
 		// listService.ProcessWordsOfSingleGroup(words, listId)
@@ -365,7 +379,8 @@ func (listService *ListProcessorService) ProcessMemriseWords(listMeta model.List
 
 	}
 	listService.UpdateFolderVisibility(uint64(folderId), listMeta.Visibility)
-	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+	listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusComplete)
+	listService.SendNotification(listMeta, enums.ListMetaStatusComplete, "")
 	utils.PrintG("Processing complete")
 
 }
@@ -381,7 +396,8 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 
 		if err != nil {
 			utils.Errorf(err)
-			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+			listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusURLError)
+			listService.SendNotification(listMeta, enums.ListMetaStatusURLError, "")
 			return
 		}
 
@@ -391,7 +407,8 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 
 		if err != nil {
 			utils.Errorf(err)
-			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+			listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusError)
+			listService.SendNotification(listMeta, enums.ListMetaStatusError, "")
 			return
 		}
 
@@ -403,7 +420,8 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 
 			if err != nil {
 				utils.Errorf(err)
-				UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+				listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusURLError)
+				listService.SendNotification(listMeta, enums.ListMetaStatusURLError, "")
 				return
 			}
 			if title == "" {
@@ -434,10 +452,13 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 			// listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 			// crate list record from list meta record
-			ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
+			_, unprocessedWords := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, uint64(folderId))
+			fmt.Println(unprocessedWords)
 
-			if !ok {
-				UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+			if len(unprocessedWords) > 0 {
+				listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusError)
+				additionalText := fmt.Sprintf("we could not process these words %s", strings.Join(unprocessedWords, ","))
+				listService.SendNotification(listMeta, enums.ListMetaStatusError, additionalText)
 				return
 
 			}
@@ -450,7 +471,8 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 		words, title, err := scrapper.ScrapQuizlet(*listMeta.Url)
 
 		if err != nil {
-			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+			listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusURLError)
+			listService.SendNotification(listMeta, enums.ListMetaStatusURLError, "")
 			return
 		}
 
@@ -479,16 +501,20 @@ func (listService *ListProcessorService) ProcessQuizletWords(listMeta model.List
 		// // now add to saved lists
 		// listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
-		ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, 0)
+		_, unprocessedWords := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, 0)
+		fmt.Println(unprocessedWords)
 
-		if !ok {
-			UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+		if len(unprocessedWords) > 0 {
+			listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusError)
+			additionalText := fmt.Sprintf("we could not process these words %s", strings.Join(unprocessedWords, ","))
+			listService.SendNotification(listMeta, enums.ListMetaStatusError, additionalText)
 			return
 		}
 
 	}
 
-	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+	listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusComplete)
+	listService.SendNotification(listMeta, enums.ListMetaStatusComplete, "")
 	utils.PrintG("Processing complete")
 
 }
@@ -497,7 +523,8 @@ func (listService *ListProcessorService) ProcessVocabularyWords(listMeta model.L
 	words, title, err := scrapper.ScrapVocabulary(*listMeta.Url)
 
 	if err != nil {
-		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusURLError)
+		listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusURLError)
+		listService.SendNotification(listMeta, enums.ListMetaStatusURLError, "")
 		return
 	}
 
@@ -530,16 +557,20 @@ func (listService *ListProcessorService) ProcessVocabularyWords(listMeta model.L
 	// listService.AddToSavedList(uint64(listId), listMeta.UserId)
 
 	// crate list record from list meta record
-	ok,_ := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, 0)
+	_, unprocessedWords := listService.createListAndSaveWordsAndFolder(listMeta, title, listMeta.Visibility, listMeta.UserId, words, 0)
+	fmt.Println(unprocessedWords)
 
-	if !ok {
-		UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusError)
+	if len(unprocessedWords) > 0 {
+		listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusError)
+		additionalText := fmt.Sprintf("we could not process these words %s", strings.Join(unprocessedWords, ","))
+		listService.SendNotification(listMeta, enums.ListMetaStatusError, additionalText)
 		utils.PrintR("Processing error ")
 		return
 	}
 
 	// update the list meta status
-	UpdateListMetaRecordStatus(listService.db, listMeta.Id, enums.ListMetaStatusComplete)
+	listService.UpdateListMetaRecordStatus(listMeta, enums.ListMetaStatusComplete)
+	listService.SendNotification(listMeta, enums.ListMetaStatusComplete, "")
 	utils.PrintG("Processing complete")
 
 }
@@ -760,11 +791,49 @@ func (listService *ListProcessorService) CheckWordListTableForWord(word string) 
 
 }
 
-func UpdateListMetaRecordStatus(db *sqlx.DB, id uint64, status int) {
+// :keep
+func (listService *ListProcessorService) UpdateListMetaRecordStatus(listMeta model.ListMetaModel, status int) {
 
-	queryMap := map[string]interface{}{"id": id, "status": status, "updated_at": time.Now().UTC()}
+	queryMap := map[string]interface{}{"id": listMeta.Id, "status": status, "updated_at": time.Now().UTC()}
 
-	db.NamedExec("Update list_meta set status=:status,updated_at=:updated_at where id=:id", queryMap)
+	listService.db.NamedExec("Update list_meta set status=:status,updated_at=:updated_at where id=:id", queryMap)
+
+	// for notifications
+	// listService.SendNotification(listMeta, status, "")
+
+}
+
+// :keep
+func (listService *ListProcessorService) SendNotification(listMeta model.ListMetaModel, status int, additionalText string) {
+
+	notificationText := enums.GetListMetaStatusText(status)
+
+	fmt.Println("notificationText")
+	fmt.Println(notificationText)
+
+	if notificationText != "" {
+
+		finalNotificationText := ""
+
+		if listMeta.Url == nil {
+			finalNotificationText += fmt.Sprintf("::%d:: %s ::Status:: %s %s", listMeta.Id, listMeta.Name, notificationText, additionalText)
+		}
+
+		if status == enums.ListMetaStatusURLError {
+			finalNotificationText += fmt.Sprintf("::%d:: %s ::Status:: %s %s", listMeta.Id, listMeta.Name, notificationText, additionalText)
+		}
+
+		data := model.NotificationModel{
+			Id:        ulid.Make().String(),
+			Content:   finalNotificationText,
+			UserId:    listMeta.UserId,
+			CreatedAt: time.Now().UTC(),
+			URL:       "",
+		}
+
+		listService.db.NamedExec("INSERT INTO `notifications`(`id`, `content`, `user_id`, `url`, `created_at`) VALUES (:id,:content,:user_id,:url,:created_at)", data)
+
+	}
 
 }
 
@@ -999,7 +1068,7 @@ func (listService *ListProcessorService) ProcessUnSuccessfulWords(listMeta model
 
 	for _, word := range words {
 		w := model.PendingWordModel{
-			Word:       word,
+			Word:   word,
 			ListId: listId,
 		}
 
@@ -1015,7 +1084,7 @@ func (listService *ListProcessorService) ProcessUnSuccessfulWords(listMeta model
 
 	// send notification
 
-	url := os.Getenv("DISCORD_WEBHOOK_URL") 
+	url := os.Getenv("DISCORD_WEBHOOK_URL")
 
 	if url == "" {
 		url = "https://discord.com/api/webhooks/1123787115050844181/roFKRIy_iZ6SWhfNHEtue4rbVixP1X_PKBRcJPl5N73DCkwnyCgSSMeBO733ZcQG2hgr"
@@ -1028,7 +1097,7 @@ func (listService *ListProcessorService) ProcessUnSuccessfulWords(listMeta model
 		return
 	}
 
-	msg := fmt.Sprintf("%d words needs to be checked, for list id %d \n :: words :: \n %s",len(words),listId, strings.Join(words,", "))
+	msg := fmt.Sprintf("%d words needs to be checked, for list id %d \n :: words :: \n %s", len(words), listId, strings.Join(words, ", "))
 
 	_, err = client.CreateMessage(discord.WebhookMessageCreate{
 		Content: msg,

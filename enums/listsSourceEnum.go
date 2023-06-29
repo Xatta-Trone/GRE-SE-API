@@ -33,3 +33,23 @@ const (
 	ListMetaStatusError
 	ListMetaStatusURLError
 )
+
+func GetListMetaStatusText(status int) string {
+	statusText := ""
+	switch status {
+	case ListMetaStatusCreated:
+		statusText = "Created"
+	case ListMetaStatusParsing:
+		statusText = "Processing started."
+	case ListMetaStatusComplete:
+		statusText = "Processing complete."
+	case ListMetaStatusError:
+		statusText = "Processing error."
+	case ListMetaStatusURLError:
+		statusText = "Error extracting data from URL"
+
+	}
+
+	return statusText
+
+}
