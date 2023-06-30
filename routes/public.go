@@ -87,6 +87,7 @@ func PublicRoutes(r *gin.Engine) *gin.Engine {
 
 	// saved items 
 	authRoutes.GET("/saved-lists",listController.SavedLists)
+	authRoutes.GET("/saved-list-ids",listController.SavedListIds)
 	authRoutes.POST("/saved-lists",listController.SaveListItem)
 	authRoutes.DELETE("/saved-lists/:list_id",listController.DeleteSavedList)
 

@@ -282,6 +282,23 @@ func (ctl *ListsController) SavedLists(c *gin.Context) {
 
 }
 
+func (ctl *ListsController) SavedListIds(c *gin.Context) {
+
+	userId, err := utils.GetUserId(c)
+
+	if err != nil {
+		return
+	}
+
+	// get the data
+	listIds := ctl.repository.SavedListIds(userId)
+
+	c.JSON(200, gin.H{
+		"data": listIds,
+	})
+
+}
+
 func (ctl *ListsController) Create(c *gin.Context) {
 	user := model.UserModel{}
 	userId, err := utils.GetUserId(c)

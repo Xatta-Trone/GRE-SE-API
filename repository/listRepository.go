@@ -19,6 +19,7 @@ type ListRepositoryInterface interface {
 	Index(req *requests.ListsIndexReqStruct) ([]model.ListModel, error)
 	PublicIndex(req *requests.PublicListsIndexReqStruct) ([]model.ListModel, error)
 	SavedLists(req *requests.SavedListsIndexReqStruct) ([]model.ListModel, error)
+	SavedListIds(userId uint64) ([]uint64)
 	AdminIndex(req *requests.AdminListsIndexReqStruct) ([]model.ListModel, error)
 	Update(id uint64, req *requests.ListsUpdateRequestStruct) (bool, error)
 	FindOneBySlug(slug string) (model.ListModel, error)
@@ -29,8 +30,8 @@ type ListRepositoryInterface interface {
 	DeleteWordInList(wordId, listId uint64) (bool, error)
 	ListsByFolderId(req *requests.FolderListIndexReqStruct) ([]model.ListModel, error)
 	GetCount(ids []uint64) ([]model.ListWordModel, error)
-	GetListCount(userId uint64) (int)
-	GetWordsCount(userId uint64) (int)
+	GetListCount(userId uint64) int
+	GetWordsCount(userId uint64) int
 	FoldersByListId(listId, userId uint64) ([]model.FolderListRelationModel, error)
 	ToggleFolder(folderId, listId uint64) (bool, error)
 }
@@ -167,6 +168,21 @@ func (rep *ListRepository) SavedLists(r *requests.SavedListsIndexReqStruct) ([]m
 	}
 
 	return models, nil
+
+}
+
+func (rep *ListRepository) SavedListIds(userId uint64) []uint64 {
+
+	savedListIds := []uint64{}
+
+	err := rep.Db.Select(&savedListIds, "SELECT list_id FROM saved_lists WHERE user_id=?", userId)
+
+	if err != nil {
+		utils.Errorf(err)
+		return savedListIds
+	}
+
+	return savedListIds
 
 }
 
