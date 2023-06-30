@@ -17,6 +17,52 @@ import (
 )
 
 // GetWikiResultAndSave goes to wiki-api and retrieves the wiki result and saves to db
+func GetWikiResultAndSaveWithWg(db *sqlx.DB, word model.Result, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	utils.PrintS(fmt.Sprintf("Getting %v - %s from Wiki \n", word.ID, word.Word))
+
+	res, err := http.Get(fmt.Sprintf("https://api.dictionaryapi.dev/api/v2/entries/en_US/%s", word.Word))
+	if err != nil {
+		utils.Errorf(err)
+		return
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusOK {
+		// insert into the db
+		body, _ := io.ReadAll(res.Body)
+
+		var result []model.Wiki
+		json.Unmarshal(body, &result)
+
+		data, _ := json.Marshal(result[0])
+
+		_, err := db.Exec("Update wordlist set wiki=?,is_wiki_parsed=1,updated_at=now() where id = ? ", string(data), word.ID)
+
+		if err != nil {
+			utils.Errorf(err)
+			return
+		}
+
+		utils.PrintG(fmt.Sprintf("Inserted %v - %s from Wiki \n", word.ID, word.Word))
+
+	}
+
+	if res.StatusCode != http.StatusOK {
+		_, err := db.Exec("Update wordlist set wiki_try= wiki_try+1,updated_at=now() where id = ?", word.ID)
+
+		if err != nil {
+			utils.Errorf(err)
+		}
+		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from wiki \n", word.ID, word.Word))
+
+	}
+
+}
+
+// GetWikiResultAndSave goes to wiki-api and retrieves the wiki result and saves to db
 func GetWikiResultAndSave(db *sqlx.DB, word model.Result) {
 
 	utils.PrintS(fmt.Sprintf("Getting %v - %s from Wiki \n", word.ID, word.Word))
@@ -66,8 +112,6 @@ func GetWikiResultAndSave(db *sqlx.DB, word model.Result) {
 
 }
 
-
-
 func GetWikiResult(wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -107,7 +151,7 @@ func GetWikiResult(wg *sync.WaitGroup) {
 			var result []model.Wiki
 			json.Unmarshal(body, &result)
 
-			data,_ := json.Marshal(result[0])
+			data, _ := json.Marshal(result[0])
 
 			_, err := database.Gdb.Exec("Update wordlist set wiki=?,is_wiki_parsed=1 where id = ? ", string(data), word.ID)
 
@@ -135,7 +179,7 @@ func GetWikiResult(wg *sync.WaitGroup) {
 			color.Red("Too many attempts :: wiki")
 			time.Sleep(5 * time.Minute)
 			// wg.Done()
-			
+
 			continue
 		}
 

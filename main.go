@@ -14,6 +14,7 @@ import (
 	"github.com/gookit/validate"
 	"github.com/joho/godotenv"
 	"github.com/xatta-trone/words-combinator/database"
+	"github.com/xatta-trone/words-combinator/processor"
 	"github.com/xatta-trone/words-combinator/routes"
 )
 
@@ -58,14 +59,22 @@ func main() {
 	// services.NewWordService(database.Gdb)
 
 	// ====================================
+	// Process words data
+	// ====================================
+
+	if database.Gdb != nil {
+		go processor.UpdateUnUpdatedWords(database.Gdb)
+	}
+
+	// ====================================
 	// CRON
 	// ====================================
 
 	cron := gocron.NewScheduler(time.UTC)
 
-	cron.Every(5).Seconds().Do(func() {
+	cron.Every(1).Hours().Do(func() {
 		fmt.Println(time.Now())
-
+		go processor.ProcessPendingWords(database.Gdb)
 	})
 
 	cron.StartAsync()

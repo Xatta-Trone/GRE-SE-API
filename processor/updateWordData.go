@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/jmoiron/sqlx"
@@ -27,7 +28,7 @@ func ProcessSingleWordData(db *sqlx.DB, word model.WordModel) []model.Combined {
 		// if no then insert into wordlist and get the wordlist data
 		wordListModel, err := InsertIntoWordListTable(db, word.Word)
 		if err != nil {
-			fmt.Println(err.(*errors.Error).ErrorStack())
+			utils.Errorf(err)
 			utils.Errorf(err)
 			return result
 		}
@@ -39,7 +40,7 @@ func ProcessSingleWordData(db *sqlx.DB, word model.WordModel) []model.Combined {
 	}
 
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
 		utils.Errorf(err)
 		return result
 	}
@@ -63,7 +64,7 @@ func InsertIntoWordListTable(db *sqlx.DB, word string) (model.Result, error) {
 
 	if err != nil {
 		utils.Errorf(err)
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
 		return model, err
 	}
 
@@ -75,7 +76,25 @@ func InsertIntoWordListTable(db *sqlx.DB, word string) (model.Result, error) {
 
 	if err != nil {
 		utils.Errorf(err)
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
+		return model, err
+	}
+
+	return model, nil
+
+}
+
+func GetFromWordListTable(db *sqlx.DB, word string) (model.Result, error) {
+	var model model.Result
+	query := "SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus`,`mw` FROM `wordlist` WHERE `word` = ?;"
+
+	result := db.QueryRowx(query, word)
+
+	err := result.StructScan(&model)
+
+	if err != nil {
+		utils.Errorf(err)
+		utils.Errorf(err)
 		return model, err
 	}
 
@@ -94,7 +113,26 @@ func CheckWordListTable(db *sqlx.DB, word string) (model.Result, error) {
 	err := result.StructScan(&model)
 
 	if err != nil {
-		// fmt.Println(err.(*errors.Error).ErrorStack())
+		// utils.Errorf(err)
+		utils.Errorf(err)
+		return model, err
+	}
+
+	return model, err
+}
+
+func GetUnProcessedWordDataById(db *sqlx.DB, wordId uint64) (model.Result, error) {
+
+	query := "SELECT `id`, `word`, `google`, `wiki`, `words_api`,`thesaurus`,`mw` FROM `wordlist` WHERE `id` = ?;"
+
+	result := db.QueryRowx(query, wordId)
+
+	var model model.Result
+
+	err := result.StructScan(&model)
+
+	if err != nil {
+		// utils.Errorf(err)
 		utils.Errorf(err)
 		return model, err
 	}
@@ -336,12 +374,13 @@ func checkForSynonymWord(db *sqlx.DB, synonym string) bool {
 	err := db.Get(&result, "SELECT id FROM wordlist WHERE word=? LIMIT 1", synonym)
 
 	if err == sql.ErrNoRows {
-		// fmt.Println(err.(*errors.Error).ErrorStack())
+		// utils.Errorf(err)
 		return false
 	}
 
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
+		utils.Errorf(err)
 		log.Printf("error: %s\n", err)
 		return false
 	}
@@ -373,7 +412,7 @@ func SaveProcessedDataToWordTable(db *sqlx.DB, word string, wordId int64, wordDa
 
 	tx, err := db.Begin()
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
 	}
 	// insert the word into the words table
 	wodDataModel := model.WordDataModel{
@@ -382,44 +421,106 @@ func SaveProcessedDataToWordTable(db *sqlx.DB, word string, wordId int64, wordDa
 	}
 	data, err := json.Marshal(wodDataModel)
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
 	}
 	_, err = tx.Exec("Update words set word_data=? ,updated_at=now() where id=?", string(data), wordId)
 
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
 	}
 	// update the wordlist table
-	_, err = tx.Exec("Update wordlist set is_all_parsed=1 where word=?", word)
+	_, err = tx.Exec("Update wordlist set is_all_parsed=1, in_words=1,tried=1 where word=?", word)
 
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
 	}
+
+}
+
+func SaveNewWordData(db *sqlx.DB, word string, wordId int64, wordData []model.Combined) error {
+
+	tx, err := db.Begin()
+	if err != nil {
+		utils.Errorf(err)
+		return err
+	}
+	// insert the word into the words table
+	wodDataModel := model.WordDataModel{
+		Word:            word,
+		PartsOfSpeeches: wordData,
+	}
+	data, err := json.Marshal(wodDataModel)
+	if err != nil {
+		utils.Errorf(err)
+		return err
+	}
+	_, err = tx.Exec("INSERT INTO `words`(`word`, `word_data`, `created_at`, `updated_at`) VALUES (?,?,?,?)", word, string(data), time.Now().UTC(), time.Now().UTC())
+
+	if err != nil {
+		utils.Errorf(err)
+		return err
+	}
+	// update the wordlist table
+	_, err = tx.Exec("Update wordlist set is_all_parsed=1, in_words=1,tried=1 where word=?", word)
+
+	if err != nil {
+		utils.Errorf(err)
+		return err
+	}
+
+	err = tx.Commit()
+
+	if err != nil {
+		utils.Errorf(err)
+		return err
+	}
+
+	return nil
 
 }
 
 func UpdateNeedAttentionFlag(db *sqlx.DB, wordListData model.Result) {
 	tx, err := db.Begin()
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
 	}
 	// update the wordlist table
 	_, err = tx.Exec("Update wordlist set needs_attention=1 where id=?", wordListData.ID)
 
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
+		utils.Errorf(err)
+	}
+
+}
+
+func SetTried(db *sqlx.DB, wordId uint64) {
+	tx, err := db.Begin()
+	if err != nil {
+		utils.Errorf(err)
+	}
+	// update the wordlist table
+	_, err = tx.Exec("Update wordlist set tried=1 where id=?", wordId)
+
+	if err != nil {
+		utils.Errorf(err)
+	}
+
+	err = tx.Commit()
+
+	if err != nil {
+		utils.Errorf(err)
 	}
 
 }

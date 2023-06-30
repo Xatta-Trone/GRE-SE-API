@@ -17,6 +17,56 @@ import (
 )
 
 // GetThesaurusResultAndSave goes to thesaurus and retrieves the result and saves to db
+func GetThesaurusResultAndSaveWithWg(db *sqlx.DB, word model.Result, wg *sync.WaitGroup) {
+	defer wg.Done()
+	utils.PrintS(fmt.Sprintf("Getting %v - %s from thesaurus \n", word.ID, word.Word))
+
+	// get the scrapper url
+
+	url := os.Getenv("THESAURUS_URL")
+
+	if url == "" {
+		utils.PrintR("No thesaurus url found")
+		return
+	}
+
+	// we have the thesaurus url
+	res, err := http.Get(fmt.Sprintf("%s/%s", url, word.Word))
+
+	if err != nil {
+		utils.Errorf(err)
+		return
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusOK {
+		// insert into the db
+		body, _ := io.ReadAll(res.Body)
+		_, err := db.Exec("Update wordlist set thesaurus=?,is_parsed_th=1,updated_at=now() where id = ? ", string(body), word.ID)
+
+		if err != nil {
+			utils.Errorf(err)
+			return
+		}
+
+		utils.PrintG(fmt.Sprintf("Inserted %v - %s from thesaurus \n", word.ID, word.Word))
+
+	}
+
+	if res.StatusCode != http.StatusOK {
+		_, err := db.Exec("Update wordlist set th_try= th_try+1,updated_at=now() where id = ? ", word.ID)
+
+		if err != nil {
+			utils.Errorf(err)
+		}
+		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from thesaurus \n", word.ID, word.Word))
+
+	}
+
+}
+
+// GetThesaurusResultAndSave goes to thesaurus and retrieves the result and saves to db
 func GetThesaurusResultAndSave(db *sqlx.DB, word model.Result) {
 
 	utils.PrintS(fmt.Sprintf("Getting %v - %s from thesaurus \n", word.ID, word.Word))
@@ -71,8 +121,6 @@ func GetThesaurusResultAndSave(db *sqlx.DB, word model.Result) {
 	}
 
 }
-
-
 
 func GetThesaurusResult(wg *sync.WaitGroup) {
 	defer wg.Done()

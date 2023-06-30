@@ -27,6 +27,8 @@ type Result struct {
 	Thesaurus Thesaurus
 	Mw        MwModel `db:"mw"`
 	Ninja     sql.NullString
+	Tried     int
+	InWords   int `db:"in_words"`
 }
 
 type Google struct {

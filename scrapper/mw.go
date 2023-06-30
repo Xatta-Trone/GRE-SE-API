@@ -17,6 +17,56 @@ import (
 )
 
 // GetMWResultAndSave goes to thesaurus and retrieves the result and saves to db
+func GetMWResultAndSaveWithWg(db *sqlx.DB, word model.Result, wg *sync.WaitGroup) {
+	defer wg.Done()
+	utils.PrintS(fmt.Sprintf("Getting %v - %s from MW \n", word.ID, word.Word))
+
+	// get the scrapper url
+
+	url := os.Getenv("MW_URL")
+
+	if url == "" {
+		utils.PrintR("No mw url found")
+		return
+	}
+
+	// we have the mw url
+	res, err := http.Get(fmt.Sprintf("%s/%s", url, word.Word))
+
+	if err != nil {
+		utils.Errorf(err)
+		return
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusOK {
+		// insert into the db
+		body, _ := io.ReadAll(res.Body)
+		_, err := db.Exec("Update wordlist set mw=?,is_parsed_mw=1,updated_at=now() where id = ? ", string(body), word.ID)
+
+		if err != nil {
+			utils.Errorf(err)
+			return
+		}
+
+		utils.PrintG(fmt.Sprintf("Inserted %v - %s from MW \n", word.ID, word.Word))
+
+	}
+
+	if res.StatusCode != http.StatusOK {
+		_, err := db.Exec("Update wordlist set mw_try= mw_try+1,updated_at=now() where id = ? ", word.ID)
+
+		if err != nil {
+			utils.Errorf(err)
+		}
+		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from MW \n", word.ID, word.Word))
+
+	}
+
+
+}
+// GetMWResultAndSave goes to thesaurus and retrieves the result and saves to db
 func GetMWResultAndSave(db *sqlx.DB, word model.Result) {
 
 	utils.PrintS(fmt.Sprintf("Getting %v - %s from MW \n", word.ID, word.Word))

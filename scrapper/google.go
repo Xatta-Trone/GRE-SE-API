@@ -73,6 +73,57 @@ func GetGoogleResultAndSave(db *sqlx.DB, word model.Result) {
 
 }
 
+func GetGoogleResultAndSaveWithWG(db *sqlx.DB, word model.Result, wg *sync.WaitGroup) {
+	// time.Sleep(500 * time.Millisecond)
+	defer wg.Done()
+
+	utils.PrintS(fmt.Sprintf("Getting %v - %s from google \n", word.ID, word.Word))
+
+	// get the google scrapper url
+
+	googleUrl := os.Getenv("GOOGLE_URL")
+
+	if googleUrl == "" {
+		utils.PrintR("No google url found")
+		return
+	}
+
+	// we have the google url
+	res, err := http.Get(fmt.Sprintf("%s/%s", googleUrl, word.Word))
+
+	if err != nil {
+		utils.Errorf(err)
+		return
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusOK {
+		// insert into the db
+		body, _ := io.ReadAll(res.Body)
+		_, err := db.Exec("Update wordlist set google=?,is_google_parsed=1,updated_at=now() where id = ? ", string(body), word.ID)
+
+		if err != nil {
+			utils.Errorf(err)
+			return
+		}
+
+		utils.PrintG(fmt.Sprintf("Inserted %v - %s from google \n", word.ID, word.Word))
+
+	}
+
+	if res.StatusCode != http.StatusOK {
+		_, err := db.Exec("Update wordlist set google_try= google_try+1,updated_at=now() where id = ? ", word.ID)
+
+		if err != nil {
+			utils.Errorf(err)
+		}
+		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from google \n", word.ID, word.Word))
+
+	}
+
+}
+
 func GetGoogleResult(wg *sync.WaitGroup) {
 	defer wg.Done()
 
