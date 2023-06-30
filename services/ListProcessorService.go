@@ -264,7 +264,13 @@ func (listService *ListProcessorService) InsertWordsIntoList(listId uint64, word
 					continue
 				}
 
-				wordProcessedData, _ := processor.ProcessWordData(listService.db, wordDataRaw)
+				wordProcessedData, err := processor.ProcessWordData(listService.db, wordDataRaw)
+
+				if err != nil {
+					utils.Errorf(err)
+					// unsuccessWords = append(unsuccessWords, word)
+					continue
+				}
 
 				// save to words table
 				wordModel, err := listService.InsertIntoWordsTableWithData(word, wordProcessedData)

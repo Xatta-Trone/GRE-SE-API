@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/go-co-op/gocron"
 	"github.com/gookit/validate"
 	"github.com/joho/godotenv"
 	"github.com/xatta-trone/words-combinator/database"
@@ -27,6 +28,10 @@ func init() {
 func main() {
 	start := time.Now()
 
+	// ====================================
+	// ENV
+	// ====================================
+
 	// const projectDirName = "words-combinator"
 	// re := regexp.MustCompile(`^(.*` + projectDirName + `)`)
 	// cwd, _ := os.Getwd()
@@ -39,6 +44,9 @@ func main() {
 
 	}
 
+	// ====================================
+	// DB
+	// ====================================
 	database.Gdb = database.InitializeDB()
 
 	defer database.Gdb.Close()
@@ -49,7 +57,24 @@ func main() {
 	// init services
 	// services.NewWordService(database.Gdb)
 
-	// get release env 
+	// ====================================
+	// CRON
+	// ====================================
+
+	cron := gocron.NewScheduler(time.UTC)
+
+	cron.Every(5).Seconds().Do(func() {
+		fmt.Println(time.Now())
+
+	})
+
+	cron.StartAsync()
+
+	// ====================================
+	// ROUTING
+	// ====================================
+
+	// get release env
 	if os.Getenv("GIN_MODE") == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -65,7 +90,7 @@ func main() {
 	config.AllowOriginFunc = func(origin string) bool {
 		// get allowed origin domains from env
 		originsFromEnv := os.Getenv("ALLOW_ORIGIN_DOMAINS")
-		origins := []string{"localhost","gre-sentence-equivalence.com","127.0.0.1"}
+		origins := []string{"localhost", "gre-sentence-equivalence.com", "127.0.0.1"}
 		isAllowedThisOrigin := false
 
 		origins = append(origins, strings.Split(originsFromEnv, ",")...)
@@ -81,7 +106,7 @@ func main() {
 
 		return isAllowedThisOrigin
 	}
-	
+
 	r.Use(cors.New(config))
 
 	r.MaxMultipartMemory = 8 << 20 // 8 MiB
