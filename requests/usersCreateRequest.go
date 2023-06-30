@@ -9,7 +9,8 @@ import (
 type UsersCreateRequestStruct struct {
 	Email string `json:"email" form:"email" `
 	Token string `json:"token" form:"token" `
-	Name string `json:"name" form:"name" `
+	Name  string `json:"name" form:"name" `
+	Promo string `json:"promo" form:"promo" `
 }
 
 func (c UsersCreateRequestStruct) Validate() error {

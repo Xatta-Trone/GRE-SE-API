@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xatta-trone/words-combinator/model"
 	"github.com/xatta-trone/words-combinator/repository"
 	"github.com/xatta-trone/words-combinator/requests"
 	"github.com/xatta-trone/words-combinator/services"
@@ -93,6 +94,12 @@ func (ctl *AuthController) Login(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
 			return
 		}
+
+		// check coupon
+		fmt.Println(req.Promo)
+		if req.Promo != "" {
+			ctl.UpgradeUserWithCoupon(user, req.Promo)
+		}
 	}
 
 	// record found, now issue a token
@@ -118,10 +125,12 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	// set a cookie domain to localhost too...for development
 	// c.SetCookie("grese_token", token, ttlValue, "/", "localhost", false, true)
 
+	user2, _ := ctl.userRepo.FindOneByEmail(req.Email)
+
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
 		"exp":   exp,
-		"user":  user,
+		"user":  user2,
 	})
 
 }
@@ -254,17 +263,6 @@ func (ctl *AuthController) Upgrade(c *gin.Context) {
 
 	fmt.Println(user.ExpiresOn)
 
-	// check already premium user
-	// check if premium expired
-	today := time.Now().UTC()
-	if user.ExpiresOn != nil {
-		fmt.Println(today.After(*user.ExpiresOn))
-		if today.Before(*user.ExpiresOn) {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": "you already have a ongoing subscription"})
-			return
-		}
-	}
-
 	// validation request
 	req, errs := requests.CouponValidateRequest(c)
 
@@ -273,23 +271,62 @@ func (ctl *AuthController) Upgrade(c *gin.Context) {
 		return
 	}
 
-	couponData, err := ctl.couponRepo.FindByCoupon(req.Coupon)
+	// upgrade user
+	e := ctl.UpgradeUserWithCoupon(user, req.Coupon)
 
-	if err == sql.ErrNoRows {
-		utils.Errorf(err)
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "coupon expired or not found"})
+	if e != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": e.Error()})
 		return
 	}
 
+	user, _ = ctl.userRepo.FindOneByEmail(email)
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": user,
+	})
+
+}
+
+func (ctl *AuthController) UpgradeUserWithCoupon(user model.UserModel, coupon string) error {
+	var err error
+
+	fmt.Println(user.ExpiresOn)
+
+	// check already premium user
+	// check if premium expired
+	today := time.Now().UTC()
+	if user.ExpiresOn != nil {
+		fmt.Println(today.After(*user.ExpiresOn))
+		if today.Before(*user.ExpiresOn) {
+			err = fmt.Errorf("you already have a ongoing subscription")
+			return err
+		}
+	}
+
+	couponData, err := ctl.couponRepo.FindByCoupon(coupon)
+
+	if err == sql.ErrNoRows {
+		utils.Errorf(err)
+		err = fmt.Errorf("coupon expired or not found")
+		return err
+	}
+
+	// check coupon expiry
+
+	if couponData.Expires != nil && today.After(*couponData.Expires) {
+		err = fmt.Errorf("coupon expired or not found")
+		return err
+	}
+
 	if couponData.Type == "one_time" && couponData.UserId != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "coupon already used"})
-		return
+		err = fmt.Errorf("coupon already used")
+		return err
 	}
 
 	// check coupon max use
 	if couponData.Type == "multiple" && (couponData.MaxUse-couponData.Used) <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "coupon already used to maximum limit"})
-		return
+		err = fmt.Errorf("coupon already used to maximum limit")
+		return err
 	}
 
 	expires := time.Now().UTC().AddDate(0, couponData.Months, 0)
@@ -297,23 +334,17 @@ func (ctl *AuthController) Upgrade(c *gin.Context) {
 
 	if err != nil {
 		utils.Errorf(err)
-		c.JSON(http.StatusBadRequest, gin.H{"errors": err.Error()})
-		return
+		return err
 	}
 
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"errors": "there was a problem updating profile."})
-		return
+		err = fmt.Errorf("there was a problem updating profile")
+		return err
 	}
 
 	// ctl.couponRepo.UpdateUserId(couponData.ID, user.ID)
 	ctl.couponRepo.UpdateCouponStatus(couponData, user.ID)
-
-	user, _ = ctl.userRepo.FindOneByEmail(email)
-
-	c.JSON(http.StatusOK, gin.H{
-		"data": user,
-	})
+	return nil
 
 }
 
