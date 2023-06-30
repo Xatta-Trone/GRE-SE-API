@@ -95,7 +95,7 @@ func GetWikiResultAndSave(db *sqlx.DB, word model.Result) {
 
 	}
 
-	if res.StatusCode == http.StatusNotFound {
+	if res.StatusCode != http.StatusOK {
 		_, err := db.Exec("Update wordlist set wiki_try= wiki_try+1,updated_at=now() where id = ?", word.ID)
 
 		if err != nil {
@@ -103,11 +103,6 @@ func GetWikiResultAndSave(db *sqlx.DB, word model.Result) {
 		}
 		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from wiki \n", word.ID, word.Word))
 
-	}
-	if res.StatusCode == http.StatusTooManyRequests {
-		color.Red("Too many attempts :: wiki")
-		time.Sleep(4 * time.Minute)
-		GetWikiResultAndSave(db, word)
 	}
 
 }

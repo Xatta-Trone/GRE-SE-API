@@ -64,8 +64,8 @@ func GetMWResultAndSaveWithWg(db *sqlx.DB, word model.Result, wg *sync.WaitGroup
 
 	}
 
-
 }
+
 // GetMWResultAndSave goes to thesaurus and retrieves the result and saves to db
 func GetMWResultAndSave(db *sqlx.DB, word model.Result) {
 
@@ -89,7 +89,6 @@ func GetMWResultAndSave(db *sqlx.DB, word model.Result) {
 	}
 
 	defer res.Body.Close()
-
 	if res.StatusCode == http.StatusOK {
 		// insert into the db
 		body, _ := io.ReadAll(res.Body)
@@ -104,7 +103,7 @@ func GetMWResultAndSave(db *sqlx.DB, word model.Result) {
 
 	}
 
-	if res.StatusCode == http.StatusNotFound {
+	if res.StatusCode != http.StatusOK {
 		_, err := db.Exec("Update wordlist set mw_try= mw_try+1,updated_at=now() where id = ? ", word.ID)
 
 		if err != nil {
@@ -114,14 +113,7 @@ func GetMWResultAndSave(db *sqlx.DB, word model.Result) {
 
 	}
 
-	if res.StatusCode == http.StatusTooManyRequests {
-		color.Red("Too many attempts :: MW")
-		time.Sleep(4 * time.Minute)
-		GetMWResultAndSave(db, word)
-	}
-
 }
-
 
 func GetMWResult(wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -160,7 +152,6 @@ func GetMWResult(wg *sync.WaitGroup) {
 			// insert into the db
 			body, _ := ioutil.ReadAll(res.Body)
 
-
 			_, err := database.Gdb.Exec("Update wordlist set mw=?,is_parsed_mw=1 where id = ? ", string(body), word.ID)
 
 			if err != nil {
@@ -187,7 +178,7 @@ func GetMWResult(wg *sync.WaitGroup) {
 			color.Red("Too many attempts :: wiki")
 			time.Sleep(3 * time.Minute)
 			// wg.Done()
-			
+
 			continue
 		}
 

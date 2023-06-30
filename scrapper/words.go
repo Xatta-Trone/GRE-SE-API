@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
-	"time"
 
-	"github.com/fatih/color"
 	"github.com/imroc/req/v3"
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/database"
@@ -92,7 +90,7 @@ func GetWordsResultAndSave(db *sqlx.DB, word model.Result) {
 
 	}
 
-	if res.StatusCode == http.StatusNotFound {
+	if res.StatusCode != http.StatusOK {
 		_, err := db.Exec("Update wordlist set words_api_try= words_api_try+1,updated_at=now() where id = ? ", word.ID)
 
 		if err != nil {
@@ -100,12 +98,6 @@ func GetWordsResultAndSave(db *sqlx.DB, word model.Result) {
 		}
 		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from words api \n", word.ID, word.Word))
 
-	}
-
-	if res.StatusCode == http.StatusTooManyRequests {
-		color.Red("Too many attempts :: words api")
-		time.Sleep(4 * time.Minute)
-		GetWordsResultAndSave(db, word)
 	}
 
 }

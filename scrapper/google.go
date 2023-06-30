@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/database"
 	"github.com/xatta-trone/words-combinator/model"
@@ -32,7 +31,7 @@ func GetGoogleResultAndSave(db *sqlx.DB, word model.Result) {
 	}
 
 	// we have the google url
-	res, err := http.Get(fmt.Sprintf("%s/word/%s", googleUrl, word.Word))
+	res, err := http.Get(fmt.Sprintf("%s/%s", googleUrl, word.Word))
 
 	if err != nil {
 		utils.Errorf(err)
@@ -55,7 +54,7 @@ func GetGoogleResultAndSave(db *sqlx.DB, word model.Result) {
 
 	}
 
-	if res.StatusCode == http.StatusNotFound {
+	if res.StatusCode != http.StatusOK {
 		_, err := db.Exec("Update wordlist set google_try= google_try+1,updated_at=now() where id = ? ", word.ID)
 
 		if err != nil {
@@ -65,11 +64,6 @@ func GetGoogleResultAndSave(db *sqlx.DB, word model.Result) {
 
 	}
 
-	if res.StatusCode == http.StatusTooManyRequests {
-		color.Red("Too many attempts :: google")
-		time.Sleep(4 * time.Minute)
-		GetGoogleResultAndSave(db, word)
-	}
 
 }
 

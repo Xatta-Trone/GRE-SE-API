@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/jmoiron/sqlx"
 	"github.com/xatta-trone/words-combinator/database"
 	"github.com/xatta-trone/words-combinator/model"
@@ -104,7 +103,7 @@ func GetThesaurusResultAndSave(db *sqlx.DB, word model.Result) {
 
 	}
 
-	if res.StatusCode == http.StatusNotFound {
+	if res.StatusCode != http.StatusOK {
 		_, err := db.Exec("Update wordlist set th_try= th_try+1,updated_at=now() where id = ? ", word.ID)
 
 		if err != nil {
@@ -112,12 +111,6 @@ func GetThesaurusResultAndSave(db *sqlx.DB, word model.Result) {
 		}
 		utils.PrintR(fmt.Sprintf("Updated Not found %v - %s from thesaurus \n", word.ID, word.Word))
 
-	}
-
-	if res.StatusCode == http.StatusTooManyRequests {
-		color.Red("Too many attempts :: google")
-		time.Sleep(4 * time.Minute)
-		GetThesaurusResultAndSave(db, word)
 	}
 
 }

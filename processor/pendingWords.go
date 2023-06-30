@@ -2,7 +2,6 @@ package processor
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -29,6 +28,8 @@ func ProcessPendingWords(db *sqlx.DB) {
 		return
 	}
 
+	fmt.Println(len(pendingWords))
+
 	for _, pendingWord := range pendingWords {
 
 		// check in wordlist
@@ -44,17 +45,23 @@ func ProcessPendingWords(db *sqlx.DB) {
 
 		// now get the data from the internet
 
-		var wg *sync.WaitGroup
+		// var wg *sync.WaitGroup
 
-		wg.Add(5)
+		// wg.Add(5)
 
-		go scrapper.GetGoogleResultAndSaveWithWG(db, wordListData, wg)
-		go scrapper.GetWikiResultAndSaveWithWg(db, wordListData, wg)
-		go scrapper.GetThesaurusResultAndSaveWithWg(db, wordListData, wg)
-		go scrapper.GetWordsResultAndSaveWithWg(db, wordListData, wg)
-		go scrapper.GetMWResultAndSaveWithWg(db, wordListData, wg)
+		// go scrapper.GetGoogleResultAndSaveWithWG(db, wordListData, wg)
+		// go scrapper.GetWikiResultAndSaveWithWg(db, wordListData, wg)
+		// go scrapper.GetThesaurusResultAndSaveWithWg(db, wordListData, wg)
+		// go scrapper.GetWordsResultAndSaveWithWg(db, wordListData, wg)
+		// go scrapper.GetMWResultAndSaveWithWg(db, wordListData, wg)
 
-		wg.Wait()
+		scrapper.GetGoogleResultAndSave(db, wordListData)
+		scrapper.GetWikiResultAndSave(db, wordListData)
+		scrapper.GetThesaurusResultAndSave(db, wordListData)
+		scrapper.GetWordsResultAndSave(db, wordListData)
+		scrapper.GetMWResultAndSave(db, wordListData)
+
+		// wg.Wait()
 
 		// now get the data again
 		updatedRawData, err := GetFromWordListTable(db, pendingWord.Word)
