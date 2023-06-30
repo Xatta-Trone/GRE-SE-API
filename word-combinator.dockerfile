@@ -17,7 +17,7 @@ RUN chmod +x app
 
 #run script
 RUN chmod +x script.sh
-RUN "/script.sh"
+RUN . script.sh
 
 # COPY --from=builder /app/prod/app /app/prod/app
 
