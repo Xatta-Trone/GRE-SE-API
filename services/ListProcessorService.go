@@ -245,48 +245,53 @@ func (listService *ListProcessorService) InsertWordsIntoList(listId uint64, word
 
 		// if the word not exists
 		if err == sql.ErrNoRows {
+			unsuccessWords = append(unsuccessWords, word)
+			continue
 			// first check in word-data table
-			wordListId := listService.CheckWordListTableForWord(word)
+			// wordListId := listService.CheckWordListTableForWord(word)
 
-			if wordListId == 0 {
-				// todo: dump to words to scrap
-				unsuccessWords = append(unsuccessWords, word)
-				continue
-			}
+			// if wordListId == 0 {
+			// 	// todo: dump to words to scrap
+			// 	unsuccessWords = append(unsuccessWords, word)
+			// 	continue
+			// }
 
-			if wordListId != 0 {
-				// process the word from the wordlist table and save to words table
-				wordDataRaw, err := processor.CheckWordListTable(listService.db, word)
+			// if wordListId != 0 {
+			// 	// process the word from the wordlist table and save to words table
+			// 	wordDataRaw, err := processor.CheckWordListTable(listService.db, word)
 
-				if err != nil {
-					utils.Errorf(err)
-					unsuccessWords = append(unsuccessWords, word)
-					continue
-				}
+			// 	if err != nil {
+			// 		utils.Errorf(err)
+			// 		unsuccessWords = append(unsuccessWords, word)
+			// 		continue
+			// 	}
 
-				wordProcessedData, err := processor.ProcessWordData(listService.db, wordDataRaw)
+			// 	wordProcessedData, err := processor.ProcessWordData(listService.db, wordDataRaw)
 
-				if err != nil {
-					utils.Errorf(err)
-					// unsuccessWords = append(unsuccessWords, word)
-					continue
-				}
+			// 	if err != nil {
+			// 		utils.Errorf(err)
+			// 		// unsuccessWords = append(unsuccessWords, word)
+			// 		continue
+			// 	}
 
-				// save to words table
-				wordModel, err := listService.InsertIntoWordsTableWithData(word, wordProcessedData)
+			// 	// save to words table
+			// 	wordModel, err := listService.InsertIntoWordsTableWithData(word, wordProcessedData)
 
-				if err != nil {
-					utils.Errorf(err)
-					unsuccessWords = append(unsuccessWords, word)
-					continue
-				}
+			// 	if err != nil {
+			// 		utils.Errorf(err)
+			// 		unsuccessWords = append(unsuccessWords, word)
+			// 		continue
+			// 	}
 
-				// insert the words relation
-				_ = listService.InsertListWordRelation(int64(wordModel.Id), int64(listId))
-				// go to the next word
-				continue
-			}
+			// 	// insert the words relation
+			// 	_ = listService.InsertListWordRelation(int64(wordModel.Id), int64(listId))
+			// 	// go to the next word
+			// 	continue
+			// }
 
+		} else {
+			unsuccessWords = append(unsuccessWords, word)
+			continue
 		}
 
 	}
