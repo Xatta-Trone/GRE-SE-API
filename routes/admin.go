@@ -43,6 +43,10 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	couponRepo := repository.NewCouponRepository(database.Gdb)
 	couponController := controllers.NewAdminCouponController(couponRepo)
 
+	// pending words
+	pendingWordRepo := repository.NewPendingWordsRepository(database.Gdb)
+	pendingWordController := controllers.NewPendingWordsController(pendingWordRepo)
+
 	admin := r.Group("/admin")
 
 	admin.Use(middlewares.SetAdminScope())
@@ -151,10 +155,16 @@ func AdminRoutes(r *gin.Engine) *gin.Engine {
 	admin.DELETE("/lists/:id", listController.Delete)
 	admin.DELETE("/lists-word/:slug", listController.DeleteWordInList)
 
-	// coupons 
-	admin.GET("coupons",couponController.Index)
-	admin.POST("coupons",couponController.Create)
-	admin.DELETE("coupons/:id",couponController.Delete)
+	// coupons
+	admin.GET("coupons", couponController.Index)
+	admin.POST("coupons", couponController.Create)
+	admin.DELETE("coupons/:id", couponController.Delete)
+
+	// pending words
+	admin.GET("/pending-words",pendingWordController.Index)
+	admin.PUT("/pending-words",pendingWordController.Update)
+	admin.PATCH("/pending-words",pendingWordController.Update)
+	admin.DELETE("/pending-words/:list_id", pendingWordController.Delete)
 
 
 	return r
