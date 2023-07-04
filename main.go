@@ -16,6 +16,7 @@ import (
 	"github.com/xatta-trone/words-combinator/database"
 	"github.com/xatta-trone/words-combinator/processor"
 	"github.com/xatta-trone/words-combinator/routes"
+	"github.com/xatta-trone/words-combinator/utils"
 )
 
 func init() {
@@ -74,6 +75,7 @@ func main() {
 
 	cron.Every(1).Hours().Do(func() {
 		fmt.Println(time.Now())
+		utils.PrintG("Processing started")
 		go processor.ProcessPendingWords(database.Gdb)
 	})
 
