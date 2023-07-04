@@ -830,8 +830,8 @@ func (listService *ListProcessorService) SendNotification(listMeta model.ListMet
 			finalNotificationText += fmt.Sprintf("::%d:: %s ::Status:: %s %s", listMeta.Id, listMeta.Name, notificationText, additionalText)
 		}
 
-		if status == enums.ListMetaStatusURLError {
-			finalNotificationText += fmt.Sprintf("::%d:: %s ::Status:: %s %s", listMeta.Id, listMeta.Name, notificationText, additionalText)
+		if listMeta.Url != nil {
+			finalNotificationText += fmt.Sprintf("::%d:: %s ::Status:: %s %s", listMeta.Id, *listMeta.Url, notificationText, additionalText)
 		}
 
 		data := model.NotificationModel{
