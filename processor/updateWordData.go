@@ -145,6 +145,8 @@ func ProcessWordData(db *sqlx.DB, wordlist model.Result) ([]model.Combined, erro
 	// init final processed model
 	finalResult := []model.Combined{}
 
+	fmt.Println(wordlist.Google.MainWord)
+
 	// check if main word exists
 	if wordlist.Google.MainWord == "" {
 		// update the database to review manually
@@ -460,7 +462,7 @@ func SaveNewWordData(db *sqlx.DB, word string, wordId int64, wordData []model.Co
 		utils.Errorf(err)
 		return err
 	}
-	_, err = tx.Exec("INSERT INTO `words`(`word`, `word_data`, `created_at`, `updated_at`) VALUES (?,?,?,?)", word, string(data), time.Now().UTC(), time.Now().UTC())
+	_, err = tx.Exec("INSERT INTO `words`(`word`, `word_data`, `created_at`, `updated_at`) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE word_data=?", word, string(data), time.Now().UTC(), time.Now().UTC(),string(data),)
 
 	if err != nil {
 		utils.Errorf(err)

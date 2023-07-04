@@ -71,6 +71,8 @@ func ProcessPendingWords(db *sqlx.DB) {
 			continue
 		}
 
+		fmt.Println(updatedRawData.Google)
+
 		// now process the data
 		processedData, err := ProcessWordData(db, updatedRawData)
 
@@ -103,7 +105,8 @@ func ProcessPendingWords(db *sqlx.DB) {
 			// save to word list relation
 			InsertListWordRelation(int64(wordsTableId), int64(pendingWord.ListId), db)
 			// delete from the pending list
-			db.Exec("Delete from `pending_words` where word=?, list_id=?", pendingWord.Word, pendingWord.ListId)
+			DeletePendingWords(pendingWord,db)
+			// db.Exec("Delete from `pending_words` where word=?, list_id=?", pendingWord.Word, pendingWord.ListId)
 
 		}
 
@@ -118,6 +121,25 @@ func UpdateAsTried(data model.PendingWordModel, db *sqlx.DB) {
 	}
 	// update the wordlist table
 	_, err = tx.Exec("Update pending_words set tried=1 where word=? and list_id=?", data.Word, data.ListId)
+
+	if err != nil {
+		utils.Errorf(err)
+	}
+
+	err = tx.Commit()
+
+	if err != nil {
+		utils.Errorf(err)
+	}
+}
+
+func DeletePendingWords(data model.PendingWordModel, db *sqlx.DB) {
+	tx, err := db.Begin()
+	if err != nil {
+		utils.Errorf(err)
+	}
+	// update the wordlist table
+	_, err = tx.Exec("Delete from pending_words where word=? and list_id=?", data.Word, data.ListId)
 
 	if err != nil {
 		utils.Errorf(err)
