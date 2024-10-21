@@ -1,7 +1,7 @@
 # # base go image
 FROM golang:1.20-alpine as builder
 RUN apk --no-cache add gcc g++ make git
-RUN go install github.com/pressly/goose/v3/cmd/goose@v3.9.1
+RUN go install github.com/pressly/goose/v3/cmd/goose@v3.20.0
 RUN apk add chromium
 
 RUN mkdir /app
